@@ -113,6 +113,8 @@ endif
 GENERIC_PLATFORM_DIR := $(TOPDIR)/target/linux/generic
 GENERIC_PATCH_DIR := $(GENERIC_PLATFORM_DIR)/patches$(if $(wildcard $(GENERIC_PLATFORM_DIR)/patches-$(KERNEL_PATCHVER)),-$(KERNEL_PATCHVER))
 GENERIC_FILES_DIR := $(foreach dir,$(wildcard $(GENERIC_PLATFORM_DIR)/files $(GENERIC_PLATFORM_DIR)/files-$(KERNEL_PATCHVER)),"$(dir)")
+MT7615_PATCH_DIR := $(TOPDIR)/target/linux/wifi/mt7615-patch
+MT76x2_PATCH_DIR := $(TOPDIR)/target/linux/wifi/mt76x2-patch
 
 __config_name_list = $(1)/config-$(KERNEL_PATCHVER) $(1)/config-default
 __config_list = $(firstword $(wildcard $(call __config_name_list,$(1))))
@@ -215,6 +217,7 @@ ifeq ($(DUMP),1)
     CPU_CFLAGS_24kec = -mips32r2 -mtune=24kec
     CPU_CFLAGS_34kc = -mips32r2 -mtune=34kc
     CPU_CFLAGS_74kc = -mips32r2 -mtune=74kc
+    CPU_CFLAGS_1004kc = -mips32r2 -mtune=1004kc
     CPU_CFLAGS_octeon = -march=octeon -mabi=64
     CPU_CFLAGS_dsp = -mdsp
     CPU_CFLAGS_dsp2 = -mdspr2
@@ -230,6 +233,7 @@ ifeq ($(DUMP),1)
     CPU_CFLAGS_arm926ej-s = -march=armv5te -mtune=arm926ej-s
     CPU_CFLAGS_arm1136j-s = -march=armv6 -mtune=arm1136j-s
     CPU_CFLAGS_arm1176jzf-s = -march=armv6 -mtune=arm1176jzf-s
+    CPU_CFLAGS_cortex-a5 = -march=armv7-a -mtune=cortex-a5
     CPU_CFLAGS_cortex-a7 = -march=armv7-a -mtune=cortex-a7
     CPU_CFLAGS_cortex-a8 = -march=armv7-a -mtune=cortex-a8
     CPU_CFLAGS_cortex-a9 = -march=armv7-a -mtune=cortex-a9
@@ -252,6 +256,10 @@ ifeq ($(DUMP),1)
   ifeq ($(ARCH),sparc)
     CPU_TYPE = sparc
     CPU_CFLAGS_ultrasparc = -mcpu=ultrasparc
+  endif
+  ifeq ($(ARCH),aarch64)
+    CPU_TYPE ?= armv8-a
+    CPU_CFLAGS_armv8-a = -mcpu=armv8-a
   endif
   DEFAULT_CFLAGS=$(strip $(CPU_CFLAGS) $(CPU_CFLAGS_$(CPU_TYPE)) $(CPU_CFLAGS_$(CPU_SUBTYPE)))
 endif

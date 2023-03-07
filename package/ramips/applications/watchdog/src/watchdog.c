@@ -40,7 +40,7 @@ void sigusr1_handler(int arg)
 
 void sigterm_handler(int arg)
 {
-	int ret;
+    int ret;
     int opt = 0;
     _running = 0;
     opt = WDIOS_DISABLECARD;

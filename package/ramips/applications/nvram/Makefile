@@ -17,19 +17,30 @@ define Package/nvram
   CATEGORY:=MTK Properties
   SUBMENU:=Applications
   TITLE:=MTK nvram tool
-  DEPENDS:=@TARGET_ramips +libc +libnvram
+  DEPENDS:=@(TARGET_ramips||TARGET_mediatek) +libc +libnvram
   MENU:=1
+endef
+
+define Package/flash
+  CATEGORY:=MTK Properties
+  SUBMENU:=Applications
+  TITLE:=flash r/w tool
+  DEPENDS:=@(TARGET_ramips||TARGET_mediatek) +libc +libnvram
 endef
 
 define Package/libnvram
   CATEGORY:=MTK Properties
   SUBMENU:=Libraries
   TITLE:=MTK nvram library
-  DEPENDS:=@TARGET_ramips +libc
+  DEPENDS:=@(TARGET_ramips||TARGET_mediatek) +libc
 endef
 
 define Package/nvram/description
   MTK nvram tool
+endef
+
+define Package/flash/description
+  flash r/w tool
 endef
 
 define Package/libnvram/description
@@ -63,6 +74,11 @@ define Package/nvram/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/nvram $(1)/usr/bin
 endef
 
+define Package/flash/install
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/flash $(1)/usr/bin
+endef
+
 define Package/libnvram/install
 	$(INSTALL_DIR) $(1)/usr/lib
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/*.so $(1)/usr/lib
@@ -71,4 +87,5 @@ endef
 
 $(eval $(call BuildPackage,libnvram))
 $(eval $(call BuildPackage,nvram))
+$(eval $(call BuildPackage,flash))
 

@@ -245,10 +245,10 @@ int main(int argc, char *argv[])
         case AC_GET_IP_UL_BYTE_CNT:
         case AC_GET_IP_DL_BYTE_CNT:
             result = GetAcEntry(&args, method);
-	    printf("Count=%lld\n",args.cnt);
+            printf("Count=%lld\n",args.cnt);
             break;
-    default:
-         result = AC_FAIL;
+        default:
+            result = AC_FAIL;
     }
 
     if(result == AC_SUCCESS)

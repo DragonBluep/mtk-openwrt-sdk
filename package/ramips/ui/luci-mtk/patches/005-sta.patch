@@ -47,7 +47,7 @@ Index: luci/modules/admin-full/luasrc/model/cbi/admin_network/wifi.lua
  	wifimode = s:taboption("general", ListValue, "wifimode", translate("Network Mode"))
          wifimode:value("0", translate("802.11b/g"))
          wifimode:value("1", translate("802.11b"))
-@@ -708,7 +715,7 @@ xessid.datatype="maxlength(32)"
+@@ -716,7 +723,7 @@ xessid.datatype="maxlength(32)"
  mode = s:taboption("general", ListValue, "mode", translate("Mode"))
  mode.override_values = true
  mode:value("ap", translate("Access Point"))
@@ -56,7 +56,7 @@ Index: luci/modules/admin-full/luasrc/model/cbi/admin_network/wifi.lua
  -- mode:value("adhoc", translate("Ad-Hoc"))
  
  bssid = s:taboption("general", Value, "bssid", translate("<abbr title=\"Basic Service Set Identifier\">BSSID</abbr>"))
-@@ -811,6 +818,7 @@ if vendor == "ralink" then
+@@ -819,6 +826,7 @@ if vendor == "ralink" then
  --	hidden = s:taboption("general", Flag, "hidden", translate("Hide <abbr title=\"Extended Service Set Identifier\">ESSID</abbr>"))
  --	hidden:depends({mode="ap"})
  --	hidden:depends({mode="ap-wds"})
@@ -64,7 +64,7 @@ Index: luci/modules/admin-full/luasrc/model/cbi/admin_network/wifi.lua
  	wmm = s:taboption("general", ListValue, "wmm", translate("WMM Mode"))
          wmm:value("0","Disable")
          wmm:value("1","Enable")
-@@ -819,7 +827,7 @@ if vendor == "ralink" then
+@@ -827,7 +835,7 @@ if vendor == "ralink" then
          APSD:value("0","Disable")
          APSD:value("1","Enable")
          APSD.default = 0

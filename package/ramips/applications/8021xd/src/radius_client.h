@@ -30,7 +30,11 @@ typedef enum
 {
     RADIUS_RX_PROCESSED,
     RADIUS_RX_QUEUED,
-    RADIUS_RX_UNKNOWN
+    RADIUS_RX_UNKNOWN,
+    /**
+     * RADIUS_RX_INVALID_AUTHENTICATOR - Message has invalid Authenticator
+     */
+    RADIUS_RX_INVALID_AUTHENTICATOR
 } RadiusRxResult;
 
 struct radius_rx_handler

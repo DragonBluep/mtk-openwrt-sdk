@@ -376,7 +376,7 @@ int32_t nvram_commit(char flash)
 
     if (flash)
     {
-        i = flash_write(buffer, 0, nvram_mtd_size);
+        i = flash_write(NVRAM_MTD_NAME, buffer, 0, nvram_mtd_size);
         ASSERT(i>0);
     }
 
@@ -560,7 +560,7 @@ int32_t nvram_filecache(char * defile)
     {
         memset(buffer, 0, nvram_mtd_size);
         DEBUG("read %s data from flash.\n", nvlayout[i].name);
-        if (flash_read(buffer, nvlayout[i].offset, nvlayout[i].size) != nvlayout[i].size)
+        if (flash_read(NVRAM_MTD_NAME, buffer, nvlayout[i].offset, nvlayout[i].size) != nvlayout[i].size)
         {
             fprintf(stderr, "failed to read %s, %s, %s\n",
                     nvlayout[i].name, strerror(errno), __FUNCTION__);

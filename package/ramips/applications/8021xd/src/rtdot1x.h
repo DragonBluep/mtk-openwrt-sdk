@@ -6,7 +6,7 @@
 
 
 #define MAC_ADDR_LEN                6
-#define MAX_MBSSID_NUM              8
+#define MAX_MBSSID_NUM              16
 #define WEP8021X_KEY_LEN            13
 
 #ifndef ETH_ALEN
@@ -22,7 +22,7 @@
 #include "config.h"
 
 /* It shall be the same with wireless driver */
-#define dot1x_version   "2.6.0.0"
+#define dot1x_version   "3.0.0.0"
 
 #define NIC_DBG_STRING      ("[DOT1X] ")
 
@@ -54,11 +54,32 @@
 #define OID_802_DOT1X_STATIC_WEP_COPY               0x0544
 #define OID_802_DOT1X_IDLE_TIMEOUT                  0x0545
 
+#ifdef RADIUS_MAC_ACL_SUPPORT
+#define OID_802_DOT1X_RADIUS_ACL_NEW_CACHE                              0x0546
+#define OID_802_DOT1X_RADIUS_ACL_DEL_CACHE                              0x0547
+#define OID_802_DOT1X_RADIUS_ACL_CLEAR_CACHE                            0x0548
+#endif /* RADIUS_MAC_ACL_SUPPORT */
+#define OID_802_DOT1X_QUERY_STA_AID                                     0x0549
+
+#define OID_802_11_WNM_BTM_REQ                      0x0928
+#define OID_802_11_WNM_NOTIFY_REQ                   0x0944
+#define OID_802_11_GET_STA_HSINFO                   0x0946
+
 #define RT_OID_802_DOT1X_PMKID_CACHE        (OID_GET_SET_TOGGLE | OID_802_DOT1X_PMKID_CACHE)
 #define RT_OID_802_DOT1X_RADIUS_DATA        (OID_GET_SET_TOGGLE | OID_802_DOT1X_RADIUS_DATA)
 #define RT_OID_802_DOT1X_WPA_KEY            (OID_GET_SET_TOGGLE | OID_802_DOT1X_WPA_KEY)
 #define RT_OID_802_DOT1X_STATIC_WEP_COPY    (OID_GET_SET_TOGGLE | OID_802_DOT1X_STATIC_WEP_COPY)
 #define RT_OID_802_DOT1X_IDLE_TIMEOUT       (OID_GET_SET_TOGGLE | OID_802_DOT1X_IDLE_TIMEOUT)
+
+#ifdef RADIUS_MAC_ACL_SUPPORT
+#define RT_OID_802_DOT1X_RADIUS_ACL_NEW_CACHE   (OID_GET_SET_TOGGLE | OID_802_DOT1X_RADIUS_ACL_NEW_CACHE)
+#define RT_OID_802_DOT1X_RADIUS_ACL_DEL_CACHE   (OID_GET_SET_TOGGLE | OID_802_DOT1X_RADIUS_ACL_DEL_CACHE)
+#define RT_OID_802_DOT1X_RADIUS_ACL_CLEAR_CACHE (OID_GET_SET_TOGGLE | OID_802_DOT1X_RADIUS_ACL_CLEAR_CACHE)
+#endif /* RADIUS_MAC_ACL_SUPPORT */
+
+#define RT_OID_802_11_WNM_NOTIFY_REQ        (OID_GET_SET_TOGGLE | OID_802_11_WNM_NOTIFY_REQ)
+#define RT_OID_802_11_WNM_BTM_REQ           (OID_GET_SET_TOGGLE | OID_802_11_WNM_BTM_REQ)
+#define RT_OID_802_11_GET_STA_HSINFO        (OID_802_11_GET_STA_HSINFO)
 #endif
 
 #define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
@@ -82,14 +103,14 @@
 #define DEFAULT_IDLE_INTERVAL               60
 
 
-#ifdef DBG
+#if DBG
 extern u32  RTDebugLevel;
-#define DBGPRINT(Level, ...)                    \
+#define DBGPRINT(Level, fmt, args...)                   \
 {                                   \
     if (Level <= RTDebugLevel)      \
     {                               \
         printf(NIC_DBG_STRING);   \
-        printf(__VA_ARGS__);            \
+        printf( fmt, ## args);          \
     }                               \
 }
 #else
@@ -125,6 +146,11 @@ typedef struct apd_data
 
     struct radius_client_data *radius;
 
+#ifdef RADIUS_MAC_ACL_SUPPORT
+    /* Radius ACL & Query Cache */
+    struct hostapd_cached_radius_acl *acl_cache;
+    struct hostapd_acl_query_data *acl_queries;
+#endif /* RADIUS_MAC_ACL_SUPPORT */
 } rtapd;
 
 typedef struct recv_from_ra
@@ -134,6 +160,20 @@ typedef struct recv_from_ra
     u8 ethtype[2];
     u8 xframe[1];
 } __attribute__ ((packed)) priv_rec;
+
+#ifdef RADIUS_MAC_ACL_SUPPORT
+typedef struct _RT_802_11_ACL_ENTRY
+{
+    unsigned char Addr[MAC_ADDR_LEN];
+    unsigned short Rsv;
+} RT_802_11_ACL_ENTRY, *PRT_802_11_ACL_ENTRY;
+#endif /* RADIUS_MAC_ACL_SUPPORT */
+
+typedef struct _DOT1X_QUERY_STA_AID
+{
+    unsigned char StaAddr[6];
+    unsigned int  aid;
+} __attribute__ ((packed)) DOT1X_QUERY_STA_AID;
 
 void ieee802_1x_receive(rtapd *apd, u8 *sa, u8 *apidx, u8 *buf, size_t len, u16 ethertype, int  SockNum);
 u16 RTMPCompareMemory(void *pSrc1,void *pSrc2, u16 Length);

@@ -105,8 +105,8 @@ int main(int argc, char *argv[])
     args2=malloc(sizeof(struct acl_list_args) + sizeof(struct acl_args)*511);
     if (NULL == args2)
     {
-	    printf(" Allocate memory for acl_list_args and acl_args failed.\n");
-	    return 0;
+        printf(" Allocate memory for acl_list_args and acl_args failed.\n");
+        return 0;
     }
     fd = open("/dev/"ACL_DEVNAME, O_RDONLY);
 
@@ -169,8 +169,8 @@ int main(int argc, char *argv[])
                 else
                 {
                     printf("Error: -t TCP or UDP or ANY\n");
-			    free(args2);
-			    close(fd);
+                    free(args2);
+                    close(fd);
                     return 0;
                 }
 
@@ -270,8 +270,8 @@ int main(int argc, char *argv[])
                 else
                 {
                     printf("Error: -t Deny or Allow\n");
-			free(args2);
-			close(fd);
+                    free(args2);
+                    close(fd);
                     return 0;
                 }
                 break;
@@ -281,8 +281,8 @@ int main(int argc, char *argv[])
             case '?':
             default:
                 show_usage();
-	    free(args2);
-	    close(fd);
+                free(args2);
+                close(fd);
                 return 0;
         }
     }
@@ -341,8 +341,8 @@ int main(int argc, char *argv[])
                        args2->entries[i].pn);
             }
             break;
-    default:
-	      result = ACL_FAIL;
+        default:
+            result = ACL_FAIL;
     }
 
 

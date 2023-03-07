@@ -70,7 +70,8 @@ int hmac_sha_key(const unsigned char key[], unsigned int key_len, hmac_ctx cx[1]
     if(cx->klen + key_len > HASH_INPUT_SIZE)    /* if the key has to be hashed  */
     {
         if(cx->klen <= HASH_INPUT_SIZE)         /* if the hash has not yet been */
-        {                                       /* started, initialise it and   */
+        {
+            /* started, initialise it and   */
             sha_begin(cx->ctx);                /* hash stored key characters   */
             sha_hash(cx->key, cx->klen, cx->ctx);
         }
@@ -87,12 +88,14 @@ int hmac_sha_key(const unsigned char key[], unsigned int key_len, hmac_ctx cx[1]
 /* input the HMAC data (can be called multiple times) - */
 /* note that this call terminates the key input phase   */
 void hmac_sha_data(const unsigned char data[], unsigned int data_len, hmac_ctx cx[1])
-{   unsigned int i;
+{
+    unsigned int i;
 
     if(cx->klen != HMAC_IN_DATA)                /* if not yet in data phase */
     {
         if(cx->klen > HASH_INPUT_SIZE)          /* if key is being hashed   */
-        {                                       /* complete the hash and    */
+        {
+            /* complete the hash and    */
             sha_end(cx->key, cx->ctx);         /* store the result as the  */
             cx->klen = HASH_OUTPUT_SIZE;        /* key and set new length   */
         }
@@ -119,7 +122,8 @@ void hmac_sha_data(const unsigned char data[], unsigned int data_len, hmac_ctx c
 
 /* compute and output the MAC value */
 void hmac_sha_end(unsigned char mac[], unsigned int mac_len, hmac_ctx cx[1])
-{   unsigned char dig[HASH_OUTPUT_SIZE];
+{
+    unsigned char dig[HASH_OUTPUT_SIZE];
     unsigned int i;
 
     /* if no data has been entered perform a null data phase        */
@@ -145,9 +149,10 @@ void hmac_sha_end(unsigned char mac[], unsigned int mac_len, hmac_ctx cx[1])
 
 /* 'do it all in one go' subroutine     */
 void hmac_sha(const unsigned char key[], unsigned int key_len,
-          const unsigned char data[], unsigned int data_len,
-          unsigned char mac[], unsigned int mac_len)
-{   hmac_ctx    cx[1];
+              const unsigned char data[], unsigned int data_len,
+              unsigned char mac[], unsigned int mac_len)
+{
+    hmac_ctx    cx[1];
 
     hmac_sha_begin(cx);
     hmac_sha_key(key, key_len, cx);
@@ -155,25 +160,25 @@ void hmac_sha(const unsigned char key[], unsigned int key_len,
     hmac_sha_end(mac, mac_len, cx);
 }
 
-void kd_hmac_sha256(	
-    unsigned char 	*key, 
-    unsigned int 	key_len,
-    unsigned char 	*text, 
-	unsigned int 	text_len,
-    unsigned char 	*output, 
-    unsigned int 	output_len)
+void kd_hmac_sha256(
+    unsigned char   *key,
+    unsigned int    key_len,
+    unsigned char   *text,
+    unsigned int    text_len,
+    unsigned char   *output,
+    unsigned int    output_len)
 {
-	int i;
+    int i;
 
-	for (i = 0; output_len/SHA256_DIGEST_SIZE; i++, output_len -= SHA256_DIGEST_SIZE)
-	{
-		hmac_sha(key, key_len, text, text_len, &output[i*SHA256_DIGEST_SIZE], SHA256_DIGEST_SIZE);
-		text = &output[i*SHA256_DIGEST_SIZE];
-		text_len = SHA256_DIGEST_SIZE;
-	}
+    for (i = 0; output_len/SHA256_DIGEST_SIZE; i++, output_len -= SHA256_DIGEST_SIZE)
+    {
+        hmac_sha(key, key_len, text, text_len, &output[i*SHA256_DIGEST_SIZE], SHA256_DIGEST_SIZE);
+        text = &output[i*SHA256_DIGEST_SIZE];
+        text_len = SHA256_DIGEST_SIZE;
+    }
 
-	if (output_len > 0)
-		hmac_sha(key, key_len, text, text_len, &output[i*SHA256_DIGEST_SIZE], output_len);
+    if (output_len > 0)
+        hmac_sha(key, key_len, text, text_len, &output[i*SHA256_DIGEST_SIZE], output_len);
 
 }
 

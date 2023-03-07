@@ -11,11 +11,18 @@ struct hostapd_radius_server
     size_t shared_secret_len;
 };
 
+#define HOSTAPD_MAX_SSID_LEN 32
+
 struct rtapd_config
 {
     char iface_name[IFNAMSIZ + 1];
     int SsidNum;
-
+    char Ssid[MAX_MBSSID_NUM][HOSTAPD_MAX_SSID_LEN+1];
+    int SsidLen[MAX_MBSSID_NUM];
+#ifdef RADIUS_MAC_ACL_SUPPORT
+    unsigned int AclCacheTimeout[MAX_MBSSID_NUM];  /* From Driver, Default 30s */
+    unsigned char RadiusAclEnable[MAX_MBSSID_NUM];
+#endif /* RADIUS_MAC_ACL_SUPPORT */
     int DefaultKeyID[MAX_MBSSID_NUM];
     int individual_wep_key_len[MAX_MBSSID_NUM];
     int individual_wep_key_idx[MAX_MBSSID_NUM];

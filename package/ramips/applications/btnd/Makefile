@@ -21,6 +21,7 @@ define Package/btnd
   SECTION:=MTK Properties
   CATEGORY:=MTK Properties
   TITLE:=Daemon to monitor gpio buttons
+  DEPENDS:=@TARGET_btnd
   SUBMENU:=Applications
 endef
 
@@ -34,7 +35,7 @@ define Build/Prepare
 endef
 
 TARGET_CFLAGS += \
-	-I$(LINUX_DIR)/arch/mips/include \
+	-I$(LINUX_DIR)/arch/${ARCH}/include \
 	-I$(LINUX_DIR)/include \
 	-I$(LINUX_DIR)/drivers/char/ \
 	$(foreach c, $(PKG_KCONFIG),$(if $(CONFIG_$c),-DCONFIG_$(c)=$(CONFIG_$c)))

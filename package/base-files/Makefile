@@ -122,6 +122,7 @@ define Package/base-files/install
 	mkdir -p $(1)/lib/firmware
 	$(if $(LIB_SUFFIX),-ln -s lib $(1)/lib$(LIB_SUFFIX))
 	mkdir -p $(1)/mnt
+	mkdir -p $(1)/etc_ro
 	mkdir -p $(1)/proc
 	mkdir -p $(1)/tmp
 	mkdir -p $(1)/usr/lib
@@ -152,11 +153,15 @@ define Package/base-files/install
 	if [ -d ../../.git ]; then echo `git rev-parse HEAD | cut -c-8` > $(1)/etc/sdk.version ;fi
 	if [ -f $(LINUX_DIR)/.p4rev ]; then cp $(LINUX_DIR)/.p4rev $(1)/etc/kernel.p4rev ;fi
 	echo " MTK OpenWrt SDK V3.4" >> $(1)/etc/banner
-	echo -n " revision : " >> $(1)/etc/banner
-	cat $(1)/etc/sdk.version >> $(1)/etc/banner
+	if [ -f $(1)/etc/sdk.version ]; then {\
+		echo -n " revision : " >> $(1)/etc/banner;\
+		cat $(1)/etc/sdk.version >> $(1)/etc/banner;\
+	} fi
 	echo " benchmark : APSoC SDK 5.0.1.0" >> $(1)/etc/banner
-	echo -n " kernel : " >> $(1)/etc/banner
-	cat $(1)/etc/kernel.p4rev >> $(1)/etc/banner
+	if [ -f $(1)/etc/kernel.p4rev ]; then {\
+		echo -n " kernel : " >> $(1)/etc/banner;\
+		cat $(1)/etc/kernel.p4rev >> $(1)/etc/banner;\
+	} fi
 	echo " -----------------------------------------------------" >> $(1)/etc/banner
 endef
 

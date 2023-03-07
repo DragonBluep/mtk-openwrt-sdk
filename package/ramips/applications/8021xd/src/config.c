@@ -386,6 +386,14 @@ BOOLEAN Query_config_from_driver(int ioctl_sock, char *prefix_name, struct rtapd
             num_preauth_if ++;
         }
 
+#ifdef RADIUS_MAC_ACL_SUPPORT
+        // Radius ACL Cache
+        conf->RadiusAclEnable[i] = pDot1xCmmConf->RadiusAclEnable[i];
+        DBGPRINT(RT_DEBUG_TRACE,"(no.%d) ACL_Enable: %d \n", i, conf->RadiusAclEnable[i]);
+
+        conf->AclCacheTimeout[i] = pDot1xCmmConf->AclCacheTimeout[i];
+        DBGPRINT(RT_DEBUG_TRACE,"(no.%d) ACL_Cache_Timeout: %d \n", i, conf->AclCacheTimeout[i]);
+#endif /* RADIUS_MAC_ACL_SUPPORT */
     }
 
     if (num_eap_if > 0)
@@ -435,14 +443,38 @@ struct rtapd_config * Config_read(int ioctl_sock, char *prefix_name)
     // initial default EAP IF name and Pre-Auth IF name as "br0"
     conf->num_eap_if = 1;
     conf->num_preauth_if = 1;
-    strcpy(conf->eap_if_name[0], "br-lan");
-    strcpy(conf->preauth_if_name[0], "br-lan");
+    strcpy(conf->eap_if_name[0], "br0");
+    strcpy(conf->preauth_if_name[0], "br0");
 
     // Get parameters from deiver through IOCTL cmd
     if(!Query_config_from_driver(ioctl_sock, prefix_name, conf, &errors, &flag))
     {
         Config_free(conf);
         return NULL;
+    }
+
+    struct iwreq iwr;
+    char ssidBuf[HOSTAPD_MAX_SSID_LEN];
+    for(i = 0; i < conf->SsidNum; i++)
+    {
+        memset(&iwr, 0, sizeof(iwr));
+        memset(ssidBuf, 0, sizeof(ssidBuf));
+        sprintf(iwr.ifr_name, "%s%d", prefix_name, i);
+        iwr.u.essid.pointer = ssidBuf;
+        iwr.u.essid.length = HOSTAPD_MAX_SSID_LEN;
+
+        if (ioctl(ioctl_sock, SIOCGIWESSID, &iwr) < 0)
+        {
+            perror("ioctl[SIOCGIWESSID]");
+        }
+        else
+        {
+            conf->SsidLen[i] = iwr.u.essid.length;
+            memset(conf->Ssid[i], 0, HOSTAPD_MAX_SSID_LEN);
+            memcpy(conf->Ssid[i], ssidBuf, conf->SsidLen[i]);
+            DBGPRINT(RT_DEBUG_TRACE, "From Driver MBSSID%d: %s, %d\n", i, conf->Ssid[i], conf->SsidLen[i]);
+        }
+
     }
 
 #if MULTIPLE_RADIUS

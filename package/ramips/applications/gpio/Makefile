@@ -20,7 +20,8 @@ include $(INCLUDE_DIR)/kernel.mk
 define Package/gpio
   SECTION:=MTK Properties
   CATEGORY:=MTK Properties
-  TITLE:=Command to config gpio
+  TITLE:=Command to config gpio (ramips)
+  DEPENDS:=@TARGET_ramips
   SUBMENU:=Applications
 endef
 

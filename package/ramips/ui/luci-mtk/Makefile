@@ -252,8 +252,7 @@ define application
 endef
 
 
-$(eval $(call application,firewall,Firewall and Portforwarding application,\
-	+PACKAGE_luci-app-firewall:firewall))
+$(eval $(call application,firewall,Firewall and Portforwarding application,))
 
 $(eval $(call application,qos,Quality of Service configuration module,\
 	+PACKAGE_luci-app-qos:qos-scripts))

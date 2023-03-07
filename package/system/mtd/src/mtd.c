@@ -678,8 +678,27 @@ int main (int argc, char **argv)
 				no_erase = 1;
 				break;
 			case 'j':
+			{
+				FILE * fp = NULL;
+				char * buf = NULL;
+				long len = 2048; // assume 2048
+				size_t l = 0;
+				if ((fp = fopen("/proc/cpuinfo", "r"))) {
+					buf = (char *)malloc(len);
+					if (!buf) break;
+					memset(buf, 0, len);
+					l = fread(buf, 1, len, fp);
+					buf[len-1] = 0;
+					if (strstr(buf, "7623")) {
+						fprintf(stderr, "<%s>, yes 7623\n", __FUNCTION__);
+						break;
+					}
+				}
+
+				fprintf(stderr, "<%s>, no 7623\n", __FUNCTION__);
 				jffs2file = optarg;
 				break;
+			}
 			case 's':
 				errno = 0;
 				jffs2_skip_bytes = strtoul(optarg, 0, 0);

@@ -51,6 +51,18 @@ struct sta_info* Ap_get_sta(rtapd *apd, u8 *sa, u8 *apidx, u16 ethertype, int so
 
         DBGPRINT(RT_DEBUG_TRACE,"Create a new STA(in %s%d)\n", apd->prefix_wlan_name, s->ApIdx);
 
+        DOT1X_QUERY_STA_AID qStaAid;
+        memset(&qStaAid, 0, sizeof(DOT1X_QUERY_STA_AID));
+        memcpy(qStaAid.StaAddr, sa, MAC_ADDR_LEN);
+
+        if (RT_ioctl(apd->ioctl_sock, RT_PRIV_IOCTL, (char *)&qStaAid, sizeof(DOT1X_QUERY_STA_AID),
+                     apd->prefix_wlan_name, s->ApIdx, OID_802_DOT1X_QUERY_STA_AID))
+        {
+            DBGPRINT(RT_DEBUG_ERROR,"IOCTL ERROR with OID_802_DOT1X_QUERY_STA_AID\n");
+        }
+        s->aid = qStaAid.aid;
+        DBGPRINT(RT_DEBUG_TRACE,"STA:" MACSTR " AID: %d\n", MAC2STR(sa), s->aid);
+
         s->SockNum = sock;
         memcpy(s->addr, sa, ETH_ALEN);
         s->next = apd->sta_list;
@@ -147,8 +159,8 @@ void Ap_free_sta(rtapd *apd, struct sta_info *sta)
     Ap_sta_hash_del(apd, sta);
     Ap_sta_list_del(apd, sta);
 
-    if (sta->aid > 0)
-        apd->sta_aid[sta->aid - 1] = NULL;
+    //if (sta->aid > 0)
+    //  apd->sta_aid[sta->aid - 1] = NULL;
 
     apd->num_sta--;
 

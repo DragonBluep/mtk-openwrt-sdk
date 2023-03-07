@@ -15,4 +15,11 @@ echo 2048 > /proc/sys/vm/min_free_kbytes
 #echo 50 >  /proc/sys/vm/overcommit_ratio
 fi
 block mount
+
+# add nat rule manually
+
+smp.sh wifi
+hwnat-enable.sh
+bridge-add.sh
+
 exit 0

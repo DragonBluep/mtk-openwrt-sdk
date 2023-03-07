@@ -438,7 +438,7 @@ static int OpenRaCfgSocket()
 
 	os_memset(&ifr, 0, sizeof(ifr));
 #ifdef CONFIG_LAN_WAN_SUPPORT
-	os_memcpy(ifr.ifr_name, "eth0.1" , 7);
+    os_memcpy(ifr.ifr_name, "eth0.1" , 7);
 #else
 	os_memcpy(ifr.ifr_name, bridge_ifname , IFNAMSIZ);
 #endif

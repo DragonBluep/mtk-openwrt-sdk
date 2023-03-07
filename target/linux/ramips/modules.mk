@@ -173,7 +173,7 @@ define KernelPackage/mtk-i2s
   TITLE:=I2S Driver
   DEPENDS:=@TARGET_ramips_mt7621 +kmod-mtk-gdma +kmod-mtk-i2c
   KCONFIG:=CONFIG_RALINK_I2S CONFIG_I2S_WM8960
-  FILES:=$(LINUX_DIR)/drivers/char/i2s/ralink_i2s.ko
+  FILES:=$(LINUX_DIR)/drivers/char/i2s/core/ralink_i2s.ko
   AUTOLOAD:=$(call AutoLoad,90,ralink_i2s)
 endef
 
@@ -215,7 +215,6 @@ define KernelPackage/hw_wdg
 endef
 
 $(eval $(call KernelPackage,hw_wdg))
-
 
 define KernelPackage/hw_kwdg
   CATEGORY:=MTK Properties

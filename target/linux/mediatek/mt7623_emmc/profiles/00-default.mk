@@ -9,7 +9,7 @@ define Profile/MT7623_EMMC
     NAME:=Default Profile
     PACKAGES:=\
         -swconfig -rt2x00 \
-        ated hwnat switch uci2dat mii_mgr 8021xd e2fsprogs luci mpstat reg \
+        ated hwnat switch uci2dat mii_mgr 8021xd e2fsprogs luci mpstat reg qdma nvram \
         wireless-tools block-mount fstools kmod-scsi-generic \
         kmod-nf-sc \
         kmod-usb-core kmod-usb-storage \

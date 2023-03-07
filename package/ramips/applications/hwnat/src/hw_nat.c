@@ -186,10 +186,10 @@ int main(int argc, char *argv[])
                 method = HW_NAT_DUMP_ENTRY;
                 entry_num = strtoll(optarg, NULL, 10);
                 break;
-	case 'x':
-		method = HW_NAT_UNBIND_ENTRY;
-		entry_num = strtoll(optarg, NULL, 10);
-		break;
+            case 'x':
+                method = HW_NAT_UNBIND_ENTRY;
+                entry_num = strtoll(optarg, NULL, 10);
+                break;
             case 'd':
                 method = HW_NAT_DEBUG;
                 debug = strtoll(optarg, NULL, 10);
@@ -498,9 +498,9 @@ int main(int argc, char *argv[])
 #endif
         case HW_NAT_DUMP_ENTRY:
             result = HwNatDumpEntry(entry_num);
-	    break;
-    case HW_NAT_UNBIND_ENTRY:
-	    result = HwNatUnBindEntry(entry_num);
+            break;
+        case HW_NAT_UNBIND_ENTRY:
+            result = HwNatUnBindEntry(entry_num);
             break;
         case HW_NAT_DEBUG:
             result = HwNatDebug(debug);

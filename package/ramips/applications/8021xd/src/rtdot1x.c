@@ -28,6 +28,9 @@
 #include "sta_info.h"
 #include "radius_client.h"
 #include "config.h"
+#ifdef RADIUS_MAC_ACL_SUPPORT
+#include "ieee802_11_auth.h"
+#endif /* RADIUS_MAC_ACL_SUPPORT */
 
 //#define RT2860AP_SYSTEM_PATH   "/etc/Wireless/RT2860AP/RT2860AP.dat"
 
@@ -321,6 +324,23 @@ static void Handle_read(int sock, void *eloop_ctx, void *sock_ctx)
             case DOT1X_RELOAD_CONFIG:
                 Handle_reload_config(rtapd);
                 break;
+#ifdef RADIUS_MAC_ACL_SUPPORT
+            case DOT1X_ACL_ENTRY:
+                DBGPRINT(RT_DEBUG_TRACE, "STA(%02x:%02x:%02x:%02x:%02x:%02x) go to RADIUS-ACL Checking.\n", MAC2STR(sa));
+                DBGPRINT(RT_DEBUG_TRACE, "--> From AP Index: %d\n", apidx);
+                DBGPRINT(RT_DEBUG_TRACE, "--> Socket No.: %d\n", sock);
+                u32 session_timeout, acct_interim_interval;
+                int vlan_id = 0, res = 0;
+
+                res = hostapd_allowed_address(rtapd, sa, &apidx, ethertype, sock, NULL, 0,
+                                              &session_timeout, &acct_interim_interval, &vlan_id);
+                if (res == HOSTAPD_ACL_ACCEPT_TIMEOUT)
+                {
+                    DBGPRINT(RT_DEBUG_TRACE, "--> SessionTimeout: %d\n", session_timeout);
+                }
+
+                break;
+#endif /* RADIUS_MAC_ACL_SUPPORT */
 
             default:
                 DBGPRINT(RT_DEBUG_ERROR, "Unknown internal command(%d)!!!\n", icmd);
@@ -509,6 +529,14 @@ static int Apd_setup_interface(rtapd *rtapd)
 #else
     DBGPRINT(RT_DEBUG_TRACE,"rtapd->radius->auth_serv_sock = %d\n",rtapd->radius->auth_serv_sock);
 #endif
+
+#ifdef RADIUS_MAC_ACL_SUPPORT
+    if (hostapd_acl_init(rtapd))
+    {
+        DBGPRINT(RT_DEBUG_ERROR,"ACL initialization failed.\n");
+        return -1;
+    }
+#endif /* RADIUS_MAC_ACL_SUPPORT */
 
     return 0;
 }
@@ -743,18 +771,10 @@ int main(int argc, char *argv[])
     pid_t auth_pid;
     char prefix_name[IFNAMSIZ+1];
 
-    printf("program name = '%s'\n", argv[0]);
-
-    if (strstr(argv[0], "8021xdi"))
-    {
-        printf("1program name = '%s'\n", argv[0]);
+    if (strcmp(argv[0], "rtinicapd") == 0)
         strcpy(prefix_name, "rai");
-    }
     else
-    {
-        printf("2program name = '%s'\n", argv[0]);
         strcpy(prefix_name, "ra");
-    }
 
     for (;;)
     {
@@ -775,17 +795,12 @@ int main(int argc, char *argv[])
                 printf("Set debug level as %s\n", optarg);
                 RTDebugLevel = (int)strtol(optarg, 0, 10);
                 break;
-#if 1 /* FIXME: original prefix name seems wrong. */
-            case 'i':
-                // Assign the wireless interface when support multiple cards
-                sprintf(prefix_name, "%s", optarg);
-                break;
-#else
+
             case 'i':
                 // Assign the wireless interface when support multiple cards
                 sprintf(prefix_name, "%s%02d_", prefix_name, ((int)strtol(optarg, 0, 10) - 1));
                 break;
-#endif
+
             case 'h':
             default:
                 usage();
@@ -829,6 +844,18 @@ int main(int argc, char *argv[])
         RT_ioctl(interfaces.rtapd[0]->ioctl_sock, RT_PRIV_IOCTL, (char *)&auth_pid, sizeof(int), prefix_name, 0, RT_SET_APD_PID | OID_GET_SET_TOGGLE);
 
         eloop_run();
+
+#ifdef RADIUS_MAC_ACL_SUPPORT
+        /* Clear Inside Radius ACL Cache */
+        hostapd_acl_deinit(interfaces.rtapd[0]);
+
+        /* Clear Driver Side Radius ACL Cache */
+        for(i = 0; i < interfaces.rtapd[0]->conf->SsidNum; i++)
+        {
+            RT_ioctl(interfaces.rtapd[0]->ioctl_sock, RT_PRIV_IOCTL, (char *)&auth_pid, sizeof(int),
+                     prefix_name, i, RT_OID_802_DOT1X_RADIUS_ACL_CLEAR_CACHE);
+        }
+#endif /* RADIUS_MAC_ACL_SUPPORT */
 
         Apd_free_stas(interfaces.rtapd[0]);
         ret = 0;

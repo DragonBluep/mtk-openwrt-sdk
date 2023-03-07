@@ -61,7 +61,7 @@ endef
 define Package/fstools/install
 	$(INSTALL_DIR) $(1)/sbin $(1)/lib
 
-	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/sbin/{mount_root,jffs2reset,snapshot_tool} $(1)/sbin/
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/sbin/{mount_root,mount_root2,jffs2reset,snapshot_tool} $(1)/sbin/
 	$(INSTALL_DATA) $(PKG_INSTALL_DIR)/usr/lib/libfstools.so $(1)/lib/
 	$(INSTALL_BIN) ./files/snapshot $(1)/sbin/
 	ln -s /sbin/jffs2reset $(1)/sbin/jffs2mark

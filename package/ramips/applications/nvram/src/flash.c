@@ -39,12 +39,18 @@ struct erase_info_user
 
 #define MEMGETINFO  _IOR('M', 1, struct mtd_info_user)
 #define MEMERASE    _IOW('M', 2, struct erase_info_user)
+#define min(x,y) ({ typeof(x) _x = (x); typeof(y) _y = (y); (void) (&_x == &_y); _x < _y ? _x : _y; })
 
 int32_t mtd_open(const char *name, int32_t flags)
 {
     FILE *fp;
     char dev[80];
     int i, ret;
+
+    if (strstr(name, "/dev/mtd"))
+    {
+        return open(name, flags);
+    }
 
     if ((fp = fopen("/proc/mtd", "r")))
     {
@@ -92,12 +98,12 @@ uint32_t mtd_size(const char *name)
 }
 
 
-int32_t flash_read(char *buf, off_t from, size_t len)
+int32_t flash_read(char *path, char *buf, off_t from, size_t len)
 {
     int32_t fd, ret;
     struct mtd_info_user info;
 
-    fd = mtd_open(NVRAM_MTD_NAME, O_RDONLY);
+    fd = mtd_open(path, O_RDONLY);
     if (fd < 0)
     {
         fprintf(stderr, "Could not open mtd device\n");
@@ -130,16 +136,15 @@ int32_t flash_read(char *buf, off_t from, size_t len)
     return ret;
 }
 
-#define min(x,y) ({ typeof(x) _x = (x); typeof(y) _y = (y); (void) (&_x == &_y); _x < _y ? _x : _y; })
 
-int32_t flash_write(char *buf, off_t to, size_t len)
+int32_t flash_write(char *path, char *buf, off_t to, size_t len)
 {
     int32_t fd, ret = 0;
     char *bak = NULL;
     struct mtd_info_user info;
     struct erase_info_user ei;
 
-    fd = mtd_open(NVRAM_MTD_NAME, O_RDWR | O_SYNC);
+    fd = mtd_open(path, O_RDWR | O_SYNC);
     if (fd < 0)
     {
         fprintf(stderr, "Could not open mtd device\n");

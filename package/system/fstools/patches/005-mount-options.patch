@@ -2,6 +2,15 @@ Index: fstools-2015-02-25.1/block.c
 ===================================================================
 --- fstools-2015-02-25.1.orig/block.c
 +++ fstools-2015-02-25.1/block.c
+@@ -541,7 +541,7 @@ static int _cache_load(const char *path)
+ static void cache_load(int mtd)
+ {
+ 	if (mtd) {
+-		_cache_load("/dev/mtdblock*");
++		//_cache_load("/dev/mtdblock*");
+ 		_cache_load("/dev/ubiblock*");
+ 		_cache_load("/dev/ubi?*_?*");
+ 	}
 @@ -749,6 +749,11 @@ static int mount_device(struct blkid_str
  	if (m && m->extroot)
  		return -1;

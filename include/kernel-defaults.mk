@@ -4,7 +4,7 @@
 # This is free software, licensed under the GNU General Public License v2.
 # See /LICENSE for more information.
 #
-
+include $(INCLUDE_DIR)/wifi.mk
 KERNEL_MAKEOPTS := -C $(LINUX_DIR) \
 	HOSTCFLAGS="$(HOST_CFLAGS) -Wall -Wmissing-prototypes -Wstrict-prototypes" \
 	CROSS_COMPILE="$(KERNEL_CROSS)" \
@@ -32,6 +32,7 @@ export HOST_EXTRACFLAGS=-I$(STAGING_DIR_HOST)/include
 
 # defined in quilt.mk
 Kernel/Patch:=$(Kernel/Patch/Default)
+WiFi/Patch:=$(WiFi/Patch/Default)
 
 KERNEL_GIT_OPTS:=
 ifneq ($(strip $(CONFIG_KERNEL_GIT_LOCAL_REPOSITORY)),"")
@@ -47,6 +48,7 @@ ifeq ($(strip $(CONFIG_EXTERNAL_KERNEL_TREE)),"")
     define Kernel/Prepare/Default
 	xzcat $(DL_DIR)/$(LINUX_SOURCE) | $(TAR) -C $(KERNEL_BUILD_DIR) $(TAR_OPTIONS)
 	$(Kernel/Patch)
+	$(call wifi-prepare)
 	touch $(LINUX_DIR)/.quilt_used
 	ln -sf $(LINUX_DIR) `echo $(LINUX_DIR) | sed 's/linux-[0-9]*\.[0-9]*\.[0-9]*/linux-kernel/g'`
     endef

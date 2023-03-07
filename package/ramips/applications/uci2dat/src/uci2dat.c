@@ -32,27 +32,32 @@
 #ifdef SHDBG
 #undef SHDBG
 #endif
-#define SHDBG(...)   printf(__VA_ARGS__);
+#define SHDBG(...)   printf(__VA_ARGS__)
 #define DEVNUM_MAX (4)
 #define MBSSID_MAX (4)
 
 
-#define FPRINT(fp, e, ...) \
+#define VFPRINT(fp, e, ...) \
             do {\
                 char buffer[128] = {0}; \
-                printf("%s(),%s=", __FUNCTION__, e->dat_key); \
                 snprintf(buffer, sizeof(buffer), __VA_ARGS__); \
-                if (strlen(buffer) == 0) { \
-                    fprintf(fp, "%s", e->defvalue?e->defvalue:""); \
-                    printf("%s", "<def>"); \
-                } \
-                else { \
+                if (strlen(buffer) > 0) { \
+                    SHDBG("%s(),%s=", __FUNCTION__, e->dat_key); \
                     fprintf(fp, "%s", buffer); \
-                    printf("%s", buffer); \
+                    SHDBG("%s(),%s=%s, def=\"%s\"\n", __FUNCTION__, \
+                        e->dat_key, buffer, e->defvalue?e->defvalue:""); \
                 } \
-                printf(", def=\"%s\"\n", e->defvalue?e->defvalue:""); \
             }while(0)
 
+#define FPRINT(fp, e, v) \
+            do {\
+                if (v && strlen(v) > 0) { \
+                    SHDBG("%s(),%s=", __FUNCTION__, e->dat_key); \
+                    fprintf(fp, "%s", v); \
+                    SHDBG("%s", v); \
+                    SHDBG(", def=\"%s\"\n", e->defvalue?e->defvalue:""); \
+                } \
+            }while(0)
 
 #define WIFI_UCI_FILE "/etc/config/wireless"
 
@@ -61,8 +66,8 @@
         src = NULL; \
         src = uci_lookup_option_string(uci_ctx, s, dst.uci_key); \
         if(src) { \
-            strncpy(dst.value, src, sizeof(dst.value)); \
-            printf("%s(),    %s=%s\n", __FUNCTION__, dst.uci_key, dst.value); \
+            dst.value = strdup(src); \
+            SHDBG("%s(),    %s=%s\n", __FUNCTION__, dst.uci_key, dst.value); \
         } \
     }while(0)
 
@@ -75,10 +80,17 @@ typedef struct  _param
 {
     const char *    dat_key;
     const char *    uci_key;
-    char            value[128];
+    char       *    value;
     ucihook         hook;
     const char *    defvalue;
 } param;
+
+
+typedef struct __extra_cfg
+{
+    param cfg;
+    struct __extra_cfg * next;
+} extra_cfg;
 
 typedef struct _vif
 {
@@ -113,27 +125,29 @@ void hooker(FILE * fp, param * p, const char * devname);
 */
 vif VIF =
 {
-    .ssid               = {NULL, "ssid", {0}, NULL,  NULL},
-    .authmode           = {NULL, "encryption", {0}, NULL,  NULL},
-    .hidden             = {NULL, "hidden", {0}, NULL,  NULL},
-    .cipher             = {NULL, "cipher", {0}, NULL,  NULL},
+    .ssid               = {NULL, "ssid", NULL, NULL,  NULL},
+    .authmode           = {NULL, "encryption", NULL, NULL,  NULL},
+    .hidden             = {NULL, "hidden", NULL, NULL,  NULL},
+    .cipher             = {NULL, "cipher", NULL, NULL,  NULL},
 
     /* wpa key, or wep key index */
-    .key                = {NULL, "key", {0}, NULL,  NULL},
+    .key                = {NULL, "key", NULL, NULL,  NULL},
 
     /* wep key group */
-    .wepkey             = {{NULL, "key1", {0}, NULL,  NULL},
-                           {NULL, "key2", {0}, NULL,  NULL},
-                           {NULL, "key3", {0}, NULL,  NULL},
-                           {NULL, "key4", {0}, NULL,  NULL}},
+    .wepkey             = {
+        {NULL, "key1", NULL, NULL,  NULL},
+        {NULL, "key2", NULL, NULL,  NULL},
+        {NULL, "key3", NULL, NULL,  NULL},
+        {NULL, "key4", NULL, NULL,  NULL}
+    },
 
     /* wpa & 8021x */
     .auth_server        = {NULL, "auth_server", "0", NULL,  NULL},
     .auth_port          = {NULL, "auth_port", "1812", NULL,  NULL},
-    .auth_secret        = {NULL, "auth_secret", {0}, NULL,  NULL},
-    .pmkcacheperiod     = {NULL, "pmkcacheperiod", {0}, NULL,  NULL},
-    .preauth            = {NULL, "preauth", {0}, NULL,  NULL},
-    .rekeyinteval       = {NULL, "rekeyinteval", {0}, NULL,  NULL},
+    .auth_secret        = {NULL, "auth_secret", NULL, NULL,  NULL},
+    .pmkcacheperiod     = {NULL, "pmkcacheperiod", NULL, NULL,  NULL},
+    .preauth            = {NULL, "preauth", NULL, NULL,  NULL},
+    .rekeyinteval       = {NULL, "rekeyinteval", NULL, NULL,  NULL},
 };
 
 param CFG_ELEMENTS[] =
@@ -141,294 +155,301 @@ param CFG_ELEMENTS[] =
     /* Default configurations described in :
            MTK_Wi-Fi_SoftAP_Software_Programmming_Guide_v3.6.pdf
     */
-    {"CountryRegion", "region", {0}, hooker,  "1"},
-    {"CountryRegionABand", "aregion", {0}, hooker, "7"},
-    {"CountryCode", "country", {0}, hooker, NULL},
-    {"BssidNum", NULL, {0}, hooker,  "1"},
-    {"SSID1", NULL, {0}, hooker,  "OpenWrt"},
-    {"SSID2", NULL, {0}, hooker,  NULL},
-    {"SSID3", NULL, {0}, hooker,  NULL},
-    {"SSID4", NULL, {0}, hooker,  NULL},
-    {"WirelessMode", "wifimode", {0}, hooker,  "9"},
-    {"TxRate", "txrate", {0}, hooker, "0"},
-    {"Channel", "channel", {0}, hooker,  "0"},
-    {"BasicRate", "basicrate", {0}, hooker, "15"},
-    {"BeaconPeriod", "beacon", {0}, hooker,  "100"},
-    {"DtimPeriod", "dtim", {0}, hooker,  "1"},
-    {"TxPower", "txpower", {0}, hooker,  "100"},
-    {"DisableOLBC", "disolbc", {0}, hooker, "0"},
-    {"BGProtection", "bgprotect", {0}, hooker,  "0"},
-    {"TxAntenna", "txantenna", {0}, hooker, NULL},
-    {"RxAntenna", "rxantenna", {0}, hooker, NULL},
-    {"TxPreamble", "txpreamble", {0}, hooker,  "0"},
-    {"RTSThreshold", "rtsthres", {0}, hooker,  "2347"},
-    {"FragThreshold", "fragthres", {0}, hooker,  "2346"},
-    {"TxBurst", "txburst", {0}, hooker,  "1"},
-    {"PktAggregate", "pktaggre", {0}, hooker,  "0"},
-    {"TurboRate", "turborate", {0}, hooker, "0"},
-    {"WmmCapable", "wmm", {0}, hooker, "1"},
-    {"APSDCapable", "apsd", {0}, hooker, "1"},
-    {"DLSCapable", "dls", {0}, hooker, "0"},
-    {"APAifsn", "apaifsn", {0}, hooker, "3;7;1;1"},
-    {"APCwmin", "apcwmin", {0}, hooker, "4;4;3;2"},
-    {"APCwmax", "apcwmax", {0}, hooker, "6;10;4;3"},
-    {"APTxop", "aptxop", {0}, hooker, "0;0;94;47"},
-    {"APACM", "apacm", {0}, hooker, "0;0;0;0"},
-    {"BSSAifsn", "bssaifsn", {0}, hooker, "3;7;2;2"},
-    {"BSSCwmin", "bsscwmin", {0}, hooker, "4;4;3;2"},
-    {"BSSCwmax", "bsscwmax", {0}, hooker, "10;10;4;3"},
-    {"BSSTxop", "bsstxop", {0}, hooker, "0;0;94;47"},
-    {"BSSACM", "bssacm", {0}, hooker, "0;0;0;0"},
-    {"AckPolicy", "ackpolicy", {0}, hooker, "0;0;0;0"},
-    {"NoForwarding", "noforward", {0}, hooker, "0"},
-    {"NoForwardingBTNBSSID", NULL, {0}, NULL, "0"},
-    {"HideSSID", "hidden", {0}, hooker,  "0"},
-    {"StationKeepAlive", NULL, {0}, NULL, "0"},
-    {"ShortSlot", "shortslot", {0}, hooker,  "1"},
-    {"AutoChannelSelect", "channel", {0}, hooker, "2"},
-    {"IEEE8021X", "ieee8021x", {0}, hooker, "0"},
-    {"IEEE80211H", "ieee80211h", {0}, hooker, "0"},
-    {"CSPeriod", "csperiod", {0}, hooker, "10"},
-    {"WirelessEvent", "wirelessevent", {0}, hooker, "0"},
-    {"IdsEnable", "idsenable", {0}, hooker, "0"},
-    {"AuthFloodThreshold", NULL, {0}, NULL, "32"},
-    {"AssocReqFloodThreshold", NULL, {0}, NULL, "32"},
-    {"ReassocReqFloodThreshold", NULL, {0}, NULL, "32"},
-    {"ProbeReqFloodThreshold", NULL, {0}, NULL, "32"},
-    {"DisassocFloodThreshold", NULL, {0}, NULL, "32"},
-    {"DeauthFloodThreshold", NULL, {0}, NULL, "32"},
-    {"EapReqFooldThreshold", NULL, {0}, NULL, "32"},
-    {"PreAuth", "preauth", {0}, hooker, "0"},
-    {"AuthMode", NULL, {0}, hooker,  "OPEN"},
-    {"EncrypType", NULL, {0}, hooker,  "NONE"},
-    {"RekeyInterval", "rekeyinteval", {0}, hooker, "0"},
-    {"PMKCachePeriod", "pmkcacheperiod", {0}, hooker, "10"},
-    {"WPAPSK1", NULL, {0}, hooker,  NULL},
-    {"WPAPSK2", NULL, {0}, hooker,  NULL},
-    {"WPAPSK3", NULL, {0}, hooker,  NULL},
-    {"WPAPSK4", NULL, {0}, hooker,  NULL},
-    {"DefaultKeyID", NULL, {0}, hooker, "1"},
-    {"Key1Type", NULL, {0}, hooker, "1"},
-    {"Key1Str1", NULL, {0}, hooker, NULL},
-    {"Key1Str2", NULL, {0}, hooker, NULL},
-    {"Key1Str3", NULL, {0}, hooker, NULL},
-    {"Key1Str4", NULL, {0}, hooker, NULL},
-    {"Key2Type", NULL, {0}, hooker, "1"},
-    {"Key2Str1", NULL, {0}, hooker, NULL},
-    {"Key2Str2", NULL, {0}, hooker, NULL},
-    {"Key2Str3", NULL, {0}, hooker, NULL},
-    {"Key2Str4", NULL, {0}, hooker, NULL},
-    {"Key3Type", NULL, {0}, hooker, "1"},
-    {"Key3Str1", NULL, {0}, hooker, NULL},
-    {"Key3Str2", NULL, {0}, hooker, NULL},
-    {"Key3Str3", NULL, {0}, hooker, NULL},
-    {"Key3Str4", NULL, {0}, hooker, NULL},
-    {"Key4Type", NULL, {0}, hooker, "1"},
-    {"Key4Str1", NULL, {0}, hooker, NULL},
-    {"Key4Str2", NULL, {0}, hooker, NULL},
-    {"Key4Str3", NULL, {0}, hooker, NULL},
-    {"Key4Str4", NULL, {0}, hooker, NULL},
-    {"AccessPolicy0", NULL, {0}, NULL, "0"},
-    {"AccessControlList0", NULL, {0}, NULL, NULL},
-    {"AccessPolicy1", NULL, {0}, NULL, "0"},
-    {"AccessControlList1", NULL, {0}, NULL, NULL},
-    {"AccessPolicy2", NULL, {0}, NULL, "0"},
-    {"AccessControlList2", NULL, {0}, NULL, NULL},
-    {"AccessPolicy3", NULL, {0}, NULL, "0"},
-    {"AccessControlList3", NULL, {0}, NULL, NULL},
-    {"WdsEnable", "wds_enable", {0}, hooker, "0"},
-    {"WdsEncrypType", "wds_enctype", {0}, hooker, "NONE"},
-    {"WdsList", NULL, {0}, NULL, NULL},
-    {"Wds0Key", NULL, {0}, NULL, NULL},
-    {"Wds1Key", NULL, {0}, NULL, NULL},
-    {"Wds2Key", NULL, {0}, NULL, NULL},
-    {"Wds3Key", NULL, {0}, NULL, NULL},
-    {"RADIUS_Server", "auth_server", {0}, hooker, NULL},
-    {"RADIUS_Port", "auth_port", {0}, hooker, NULL},
-    {"RADIUS_Key1", "radius_key1", {0}, hooker, NULL},
-    {"RADIUS_Key2", "radius_key2", {0}, hooker, NULL},
-    {"RADIUS_Key3", "radius_key2", {0}, hooker, NULL},
-    {"RADIUS_Key4", "radius_key4", {0}, hooker, NULL},
-    {"own_ip_addr", "own_ip_addr", {0}, hooker, "192.168.5.234"},
-    {"EAPifname", "eapifname", {0}, hooker, NULL},
-    {"PreAuthifname", "preauthifname", {0}, hooker, "br-lan"},
-    {"HT_HTC", "ht_htc", {0}, hooker, "0"},
-    {"HT_RDG", "ht_rdg", {0}, hooker,  "0"},
-    {"HT_EXTCHA", "ht_extcha", {0}, hooker, "0"},
-    {"HT_LinkAdapt", "ht_linkadapt", {0}, hooker, "0"},
-    {"HT_OpMode", "ht_opmode", {0}, hooker, "0"},
-    {"HT_MpduDensity", NULL, {0}, hooker, "5"},
-    {"HT_BW", "bw", {0}, hooker,  "0"},
-    {"VHT_BW", "bw", {0}, hooker,  "0"},
-    {"VHT_Sec80_Channel", "vht2ndchannel", {0}, hooker, NULL},
-    {"VHT_SGI", "vht_sgi", {0}, hooker,  "1"},
-    {"VHT_STBC", "vht_stbc", {0}, hooker, "0"},
-    {"VHT_BW_SIGNAL", "vht_bw_sig", {0}, hooker,  "0"},
-    {"VHT_DisallowNonVHT", "vht_disnonvht", {0}, hooker, NULL},
-    {"VHT_LDPC", "vht_ldpc", {0}, hooker, "1"},
-    {"HT_AutoBA", "ht_autoba", {0}, hooker, "1"},
-    {"HT_AMSDU", "ht_amsdu", {0}, hooker, NULL},
-    {"HT_BAWinSize", "ht_bawinsize", {0}, hooker, "64"},
-    {"HT_GI", "ht_gi", {0}, hooker,  "1"},
-    {"HT_MCS", "ht_mcs", {0}, hooker, "33"},
-    {"WscManufacturer", "wscmanufacturer", {0}, hooker, NULL},
-    {"WscModelName", "wscmodelname", {0}, hooker, NULL},
-    {"WscDeviceName", "wscdevicename", {0}, hooker, NULL},
-    {"WscModelNumber", "wscmodelnumber", {0}, hooker, NULL},
-    {"WscSerialNumber", "wscserialnumber", {0}, hooker, NULL},
+    {"CountryRegion", "region", NULL, hooker,  "1"},
+    {"CountryRegionABand", "aregion", NULL, hooker, "7"},
+    {"CountryCode", "country", NULL, hooker, NULL},
+    {"BssidNum", NULL, NULL, hooker,  "1"},
+    {"SSID1", NULL, NULL, hooker,  "OpenWrt"},
+    {"SSID2", NULL, NULL, hooker,  NULL},
+    {"SSID3", NULL, NULL, hooker,  NULL},
+    {"SSID4", NULL, NULL, hooker,  NULL},
+    {"WirelessMode", "wifimode", NULL, hooker,  "9"},
+    {"TxRate", "txrate", NULL, hooker, "0"},
+    {"Channel", "channel", NULL, hooker,  "0"},
+    {"BasicRate", "basicrate", NULL, hooker, "15"},
+    {"BeaconPeriod", "beacon", NULL, hooker,  "100"},
+    {"DtimPeriod", "dtim", NULL, hooker,  "1"},
+    {"TxPower", "txpower", NULL, hooker,  "100"},
+    {"DisableOLBC", "disolbc", NULL, hooker, "0"},
+    {"BGProtection", "bgprotect", NULL, hooker,  "0"},
+    {"TxAntenna", "txantenna", NULL, hooker, NULL},
+    {"RxAntenna", "rxantenna", NULL, hooker, NULL},
+    {"TxPreamble", "txpreamble", NULL, hooker,  "0"},
+    {"RTSThreshold", "rtsthres", NULL, hooker,  "2347"},
+    {"FragThreshold", "fragthres", NULL, hooker,  "2346"},
+    {"TxBurst", "txburst", NULL, hooker,  "1"},
+    {"PktAggregate", "pktaggre", NULL, hooker,  "0"},
+    {"TurboRate", "turborate", NULL, hooker, "0"},
+    {"WmmCapable", "wmm", NULL, hooker, "1"},
+    {"APSDCapable", "apsd", NULL, hooker, "1"},
+    {"DLSCapable", "dls", NULL, hooker, "0"},
+    {"APAifsn", "apaifsn", NULL, hooker, "3;7;1;1"},
+    {"APCwmin", "apcwmin", NULL, hooker, "4;4;3;2"},
+    {"APCwmax", "apcwmax", NULL, hooker, "6;10;4;3"},
+    {"APTxop", "aptxop", NULL, hooker, "0;0;94;47"},
+    {"APACM", "apacm", NULL, hooker, "0;0;0;0"},
+    {"BSSAifsn", "bssaifsn", NULL, hooker, "3;7;2;2"},
+    {"BSSCwmin", "bsscwmin", NULL, hooker, "4;4;3;2"},
+    {"BSSCwmax", "bsscwmax", NULL, hooker, "10;10;4;3"},
+    {"BSSTxop", "bsstxop", NULL, hooker, "0;0;94;47"},
+    {"BSSACM", "bssacm", NULL, hooker, "0;0;0;0"},
+    {"AckPolicy", "ackpolicy", NULL, hooker, "0;0;0;0"},
+    {"NoForwarding", "noforward", NULL, hooker, "0"},
+    {"NoForwardingBTNBSSID", NULL, NULL, NULL, "0"},
+    {"HideSSID", "hidden", NULL, hooker,  "0"},
+    {"StationKeepAlive", NULL, NULL, NULL, "0"},
+    {"ShortSlot", "shortslot", NULL, hooker,  "1"},
+    {"AutoChannelSelect", "channel", NULL, hooker, "2"},
+    {"IEEE8021X", "ieee8021x", NULL, hooker, "0"},
+    {"IEEE80211H", "ieee80211h", NULL, hooker, "0"},
+    {"CSPeriod", "csperiod", NULL, hooker, "10"},
+    {"WirelessEvent", "wirelessevent", NULL, hooker, "0"},
+    {"IdsEnable", "idsenable", NULL, hooker, "0"},
+    {"AuthFloodThreshold", NULL, NULL, NULL, "32"},
+    {"AssocReqFloodThreshold", NULL, NULL, NULL, "32"},
+    {"ReassocReqFloodThreshold", NULL, NULL, NULL, "32"},
+    {"ProbeReqFloodThreshold", NULL, NULL, NULL, "32"},
+    {"DisassocFloodThreshold", NULL, NULL, NULL, "32"},
+    {"DeauthFloodThreshold", NULL, NULL, NULL, "32"},
+    {"EapReqFooldThreshold", NULL, NULL, NULL, "32"},
+    {"PreAuth", "preauth", NULL, hooker, "0"},
+    {"AuthMode", NULL, NULL, hooker,  "OPEN"},
+    {"EncrypType", NULL, NULL, hooker,  "NONE"},
+    {"RekeyInterval", "rekeyinteval", NULL, hooker, "0"},
+    {"PMKCachePeriod", "pmkcacheperiod", NULL, hooker, "10"},
+    {"WPAPSK1", NULL, NULL, hooker,  NULL},
+    {"WPAPSK2", NULL, NULL, hooker,  NULL},
+    {"WPAPSK3", NULL, NULL, hooker,  NULL},
+    {"WPAPSK4", NULL, NULL, hooker,  NULL},
+    {"DefaultKeyID", NULL, NULL, hooker, "1"},
+    {"Key1Type", NULL, NULL, hooker, "1"},
+    {"Key1Str1", NULL, NULL, hooker, NULL},
+    {"Key1Str2", NULL, NULL, hooker, NULL},
+    {"Key1Str3", NULL, NULL, hooker, NULL},
+    {"Key1Str4", NULL, NULL, hooker, NULL},
+    {"Key2Type", NULL, NULL, hooker, "1"},
+    {"Key2Str1", NULL, NULL, hooker, NULL},
+    {"Key2Str2", NULL, NULL, hooker, NULL},
+    {"Key2Str3", NULL, NULL, hooker, NULL},
+    {"Key2Str4", NULL, NULL, hooker, NULL},
+    {"Key3Type", NULL, NULL, hooker, "1"},
+    {"Key3Str1", NULL, NULL, hooker, NULL},
+    {"Key3Str2", NULL, NULL, hooker, NULL},
+    {"Key3Str3", NULL, NULL, hooker, NULL},
+    {"Key3Str4", NULL, NULL, hooker, NULL},
+    {"Key4Type", NULL, NULL, hooker, "1"},
+    {"Key4Str1", NULL, NULL, hooker, NULL},
+    {"Key4Str2", NULL, NULL, hooker, NULL},
+    {"Key4Str3", NULL, NULL, hooker, NULL},
+    {"Key4Str4", NULL, NULL, hooker, NULL},
+    {"AccessPolicy0", NULL, NULL, NULL, "0"},
+    {"AccessControlList0", NULL, NULL, NULL, NULL},
+    {"AccessPolicy1", NULL, NULL, NULL, "0"},
+    {"AccessControlList1", NULL, NULL, NULL, NULL},
+    {"AccessPolicy2", NULL, NULL, NULL, "0"},
+    {"AccessControlList2", NULL, NULL, NULL, NULL},
+    {"AccessPolicy3", NULL, NULL, NULL, "0"},
+    {"AccessControlList3", NULL, NULL, NULL, NULL},
+    {"WdsEnable", "wds_enable", NULL, hooker, "0"},
+    {"WdsEncrypType", "wds_enctype", NULL, hooker, "NONE"},
+    {"WdsList", NULL, NULL, NULL, NULL},
+    {"Wds0Key", NULL, NULL, NULL, NULL},
+    {"Wds1Key", NULL, NULL, NULL, NULL},
+    {"Wds2Key", NULL, NULL, NULL, NULL},
+    {"Wds3Key", NULL, NULL, NULL, NULL},
+    {"RADIUS_Server", "auth_server", NULL, hooker, NULL},
+    {"RADIUS_Port", "auth_port", NULL, hooker, NULL},
+    {"RADIUS_Key1", "radius_key1", NULL, hooker, NULL},
+    {"RADIUS_Key2", "radius_key2", NULL, hooker, NULL},
+    {"RADIUS_Key3", "radius_key2", NULL, hooker, NULL},
+    {"RADIUS_Key4", "radius_key4", NULL, hooker, NULL},
+    {"own_ip_addr", "own_ip_addr", NULL, hooker, "192.168.5.234"},
+    {"EAPifname", "eapifname", NULL, hooker, NULL},
+    {"PreAuthifname", "preauthifname", NULL, hooker, "br-lan"},
+    {"HT_HTC", "ht_htc", NULL, hooker, "0"},
+    {"HT_RDG", "ht_rdg", NULL, hooker,  "0"},
+    {"HT_EXTCHA", "ht_extcha", NULL, hooker, "0"},
+    {"HT_LinkAdapt", "ht_linkadapt", NULL, hooker, "0"},
+    {"HT_OpMode", "ht_opmode", NULL, hooker, "0"},
+    {"HT_MpduDensity", NULL, NULL, hooker, "5"},
+    {"HT_BW", "bw", NULL, hooker,  "0"},
+    {"VHT_BW", "bw", NULL, hooker,  "0"},
+    {"VHT_Sec80_Channel", "vht2ndchannel", NULL, hooker, NULL},
+    {"VHT_SGI", "vht_sgi", NULL, hooker,  "1"},
+    {"VHT_STBC", "vht_stbc", NULL, hooker, "0"},
+    {"VHT_BW_SIGNAL", "vht_bw_sig", NULL, hooker,  "0"},
+    {"VHT_DisallowNonVHT", "vht_disnonvht", NULL, hooker, NULL},
+    {"VHT_LDPC", "vht_ldpc", NULL, hooker, "1"},
+    {"HT_AutoBA", "ht_autoba", NULL, hooker, "1"},
+    {"HT_AMSDU", "ht_amsdu", NULL, hooker, NULL},
+    {"HT_BAWinSize", "ht_bawinsize", NULL, hooker, "64"},
+    {"HT_GI", "ht_gi", NULL, hooker,  "1"},
+    {"HT_MCS", "ht_mcs", NULL, hooker, "33"},
+    {"WscManufacturer", "wscmanufacturer", NULL, hooker, NULL},
+    {"WscModelName", "wscmodelname", NULL, hooker, NULL},
+    {"WscDeviceName", "wscdevicename", NULL, hooker, NULL},
+    {"WscModelNumber", "wscmodelnumber", NULL, hooker, NULL},
+    {"WscSerialNumber", "wscserialnumber", NULL, hooker, NULL},
 
     /* Extra configurations found in 76x2e */
-    {"FixedTxMode", "fixedtxmode", {0}, hooker, "0"},
-    {"AutoProvisionEn", "autoprovision", {0}, hooker, "0"},
-    {"FreqDelta", "freqdelta", {0}, hooker, "0"},
-    {"CarrierDetect", "carrierdetect", {0}, hooker, "0"},
-//    {"ITxBfEn", "itxbf", {0}, hooker, "0"},
-    {"PreAntSwitch", "preantswitch", {0}, hooker, "1"},
-    {"PhyRateLimit", "phyratelimit", {0}, hooker, "0"},
-    {"DebugFlags", "debugflags", {0}, hooker, "0"},
-//    {"ETxBfEnCond", NULL, {0}, NULL, "0"},
-    {"ITxBfTimeout", NULL, {0}, NULL, "0"},
-    {"ETxBfNoncompress", NULL, {0}, NULL, "0"},
-//    {"ETxBfIncapable", NULL, {0}, NULL, "1"},
-    {"FineAGC", "fineagc", {0}, hooker, "0"},
-    {"StreamMode", "streammode", {0}, hooker, "0"},
-    {"StreamModeMac0", NULL, {0}, NULL, NULL},
-    {"StreamModeMac1", NULL, {0}, NULL, NULL},
-    {"StreamModeMac2", NULL, {0}, NULL, NULL},
-    {"StreamModeMac3", NULL, {0}, NULL, NULL},
-    {"RDRegion", NULL, {0}, NULL, NULL},
-    {"DfsLowerLimit", "dfs_lowlimit", {0}, hooker, "0"},
-    {"DfsUpperLimit", "dfs_uplimit", {0}, hooker, "0"},
-    {"DfsOutdoor", "dfs_outdoor", {0}, hooker, "0"},
-    {"SymRoundFromCfg", NULL, {0}, NULL, "0"},
-    {"BusyIdleFromCfg", NULL, {0}, NULL, "0"},
-    {"DfsRssiHighFromCfg", NULL, {0}, NULL, "0"},
-    {"DfsRssiLowFromCfg", NULL, {0}, NULL, "0"},
-    {"DFSParamFromConfig", NULL, {0}, NULL, "0"},
-    {"FCCParamCh0", NULL, {0}, NULL, NULL},
-    {"FCCParamCh1", NULL, {0}, NULL, NULL},
-    {"FCCParamCh2", NULL, {0}, NULL, NULL},
-    {"FCCParamCh3", NULL, {0}, NULL, NULL},
-    {"CEParamCh0", NULL, {0}, NULL, NULL},
-    {"CEParamCh1", NULL, {0}, NULL, NULL},
-    {"CEParamCh2", NULL, {0}, NULL, NULL},
-    {"CEParamCh3", NULL, {0}, NULL, NULL},
-    {"JAPParamCh0", NULL, {0}, NULL, NULL},
-    {"JAPParamCh1", NULL, {0}, NULL, NULL},
-    {"JAPParamCh2", NULL, {0}, NULL, NULL},
-    {"JAPParamCh3", NULL, {0}, NULL, NULL},
-    {"JAPW53ParamCh0", NULL, {0}, NULL, NULL},
-    {"JAPW53ParamCh1", NULL, {0}, NULL, NULL},
-    {"JAPW53ParamCh2", NULL, {0}, NULL, NULL},
-    {"JAPW53ParamCh3", NULL, {0}, NULL, NULL},
-    {"FixDfsLimit", "fixdfslimit", {0}, hooker, "0"},
-    {"LongPulseRadarTh", "lpsradarth", {0}, hooker, "0"},
-    {"AvgRssiReq", "avgrssireq", {0}, hooker, "0"},
-    {"DFS_R66", "dfs_r66", {0}, hooker, "0"},
-    {"BlockCh", "blockch", {0}, hooker, NULL},
-    {"GreenAP", "greenap", {0}, hooker, "0"},
-    {"WapiPsk1", NULL, {0}, NULL, NULL},
-    {"WapiPsk2", NULL, {0}, NULL, NULL},
-    {"WapiPsk3", NULL, {0}, NULL, NULL},
-    {"WapiPsk4", NULL, {0}, NULL, NULL},
-    {"WapiPsk5", NULL, {0}, NULL, NULL},
-    {"WapiPsk6", NULL, {0}, NULL, NULL},
-    {"WapiPsk7", NULL, {0}, NULL, NULL},
-    {"WapiPsk8", NULL, {0}, NULL, NULL},
-    {"WapiPskType", NULL, {0}, NULL, NULL},
-    {"Wapiifname", NULL, {0}, NULL, NULL},
-    {"WapiAsCertPath", NULL, {0}, NULL, NULL},
-    {"WapiUserCertPath", NULL, {0}, NULL, NULL},
-    {"WapiAsIpAddr", NULL, {0}, NULL, NULL},
-    {"WapiAsPort", NULL, {0}, NULL, NULL},
-    {"RekeyMethod", "rekeymethod", {0}, hooker, "TIME"},
-    {"MeshAutoLink", "mesh_autolink", {0}, hooker, "0"},
-    {"MeshAuthMode", "mesh_authmode", {0}, hooker, NULL},
-    {"MeshEncrypType", "mesh_enctype", {0}, hooker, NULL},
-    {"MeshDefaultkey", "mesh_defkey", {0}, hooker, "0"},
-    {"MeshWEPKEY", "mesh_wepkey", {0}, hooker, NULL},
-    {"MeshWPAKEY", "mesh_wpakey", {0}, hooker, NULL},
-    {"MeshId", "mesh_id", {0}, hooker, NULL},
-    {"HSCounter", "hscount", {0}, hooker, "0"},
-    {"HT_BADecline", "ht_badec", {0}, hooker, "0"},
-    {"HT_STBC", "ht_stbc", {0}, hooker, "0"},
-    {"HT_LDPC", "ht_ldpc", {0}, hooker, "1"},
-    {"HT_TxStream", "ht_txstream", {0}, hooker, "1"},
-    {"HT_RxStream", "ht_rxstream", {0}, hooker, "1"},
-    {"HT_PROTECT", "ht_protect", {0}, hooker, "1"},
-    {"HT_DisallowTKIP", "ht_distkip", {0}, hooker, "0"},
-    {"HT_BSSCoexistence", "ht_bsscoexist", {0}, hooker, "0"},
-    {"WscConfMode", "wsc_confmode", {0}, hooker, "0"},
-    {"WscConfStatus", "wsc_confstatus", {0}, hooker, "2"},
-    {"WCNTest", "wcntest", {0}, hooker, "0"},
-    {"WdsPhyMode", "wds_phymode", {0}, hooker, NULL},
-    {"RADIUS_Acct_Server", "radius_acctserver", {0}, hooker, NULL},
-    {"RADIUS_Acct_Port", "radius_acctport", {0}, hooker, "1813"},
-    {"RADIUS_Acct_Key", "radius_acctkey", {0}, hooker, NULL},
-    {"Ethifname", "ethifname", {0}, hooker, NULL},
-    {"session_timeout_interval", "session_intv", {0}, hooker, "0"},
-    {"idle_timeout_interval", "idle_intv", {0}, hooker, "0"},
-    {"WiFiTest", NULL, {0}, NULL, "0"},
-    {"TGnWifiTest", "tgnwifitest", {0}, hooker, "0"},
-    {"ApCliEnable", NULL, {0}, NULL, "0"},
-    {"ApCliSsid", NULL, {0}, NULL, NULL},
-    {"ApCliBssid", NULL, {0}, NULL, NULL},
-    {"ApCliAuthMode", NULL, {0}, NULL, NULL},
-    {"ApCliEncrypType", NULL, {0}, NULL, NULL},
-    {"ApCliWPAPSK", NULL, {0}, NULL, NULL},
-    {"ApCliDefaultKeyID", NULL, {0}, NULL, "0"},
-    {"ApCliKey1Type", NULL, {0}, NULL, "0"},
-    {"ApCliKey1Str", NULL, {0}, NULL, NULL},
-    {"ApCliKey2Type", NULL, {0}, NULL, "0"},
-    {"ApCliKey2Str", NULL, {0}, NULL, NULL},
-    {"ApCliKey3Type", NULL, {0}, NULL, "0"},
-    {"ApCliKey3Str", NULL, {0}, NULL, NULL},
-    {"ApCliKey4Type", NULL, {0}, NULL, "0"},
-    {"ApCliKey4Str", NULL, {0}, NULL, NULL},
-    {"EfuseBufferMode", "efusebufmode", {0}, hooker, "0"},
-    {"E2pAccessMode", "e2paccmode", {0}, hooker, "1"},
-    {"RadioOn", "radio", {0}, hooker, "1"},
-    {"BW_Enable", "bw_enable", {0}, hooker, "0"},
-    {"BW_Root", "bw_root", {0}, hooker, "0"},
-    {"BW_Priority", "bw_priority", {0}, hooker, NULL},
-    {"BW_Guarantee_Rate", "bw_grtrate", {0}, hooker, NULL},
-    {"BW_Maximum_Rate", "bw_maxrate", {0}, hooker, NULL},
+    {"FixedTxMode", "fixedtxmode", NULL, hooker, "0"},
+    {"AutoProvisionEn", "autoprovision", NULL, hooker, "0"},
+    {"FreqDelta", "freqdelta", NULL, hooker, "0"},
+    {"CarrierDetect", "carrierdetect", NULL, hooker, "0"},
+    {"ITxBfEn", NULL, NULL, hooker, "0"},
+    {"PreAntSwitch", "preantswitch", NULL, hooker, "1"},
+    {"PhyRateLimit", "phyratelimit", NULL, hooker, "0"},
+    {"DebugFlags", "debugflags", NULL, hooker, "0"},
+    {"ETxBfEnCond", NULL, NULL, hooker, "0"},
+    {"ITxBfTimeout", NULL, NULL, NULL, "0"},
+    {"ETxBfNoncompress", NULL, NULL, NULL, "0"},
+    {"ETxBfIncapable", NULL, NULL, hooker, "1"},
+    {"FineAGC", "fineagc", NULL, hooker, "0"},
+    {"StreamMode", "streammode", NULL, hooker, "0"},
+    {"StreamModeMac0", NULL, NULL, NULL, NULL},
+    {"StreamModeMac1", NULL, NULL, NULL, NULL},
+    {"StreamModeMac2", NULL, NULL, NULL, NULL},
+    {"StreamModeMac3", NULL, NULL, NULL, NULL},
+    {"RDRegion", NULL, NULL, NULL, NULL},
+    {"DfsLowerLimit", "dfs_lowlimit", NULL, hooker, "0"},
+    {"DfsUpperLimit", "dfs_uplimit", NULL, hooker, "0"},
+    {"DfsOutdoor", "dfs_outdoor", NULL, hooker, "0"},
+    {"SymRoundFromCfg", NULL, NULL, NULL, "0"},
+    {"BusyIdleFromCfg", NULL, NULL, NULL, "0"},
+    {"DfsRssiHighFromCfg", NULL, NULL, NULL, "0"},
+    {"DfsRssiLowFromCfg", NULL, NULL, NULL, "0"},
+    {"DFSParamFromConfig", NULL, NULL, NULL, "0"},
+    {"FCCParamCh0", NULL, NULL, NULL, NULL},
+    {"FCCParamCh1", NULL, NULL, NULL, NULL},
+    {"FCCParamCh2", NULL, NULL, NULL, NULL},
+    {"FCCParamCh3", NULL, NULL, NULL, NULL},
+    {"CEParamCh0", NULL, NULL, NULL, NULL},
+    {"CEParamCh1", NULL, NULL, NULL, NULL},
+    {"CEParamCh2", NULL, NULL, NULL, NULL},
+    {"CEParamCh3", NULL, NULL, NULL, NULL},
+    {"JAPParamCh0", NULL, NULL, NULL, NULL},
+    {"JAPParamCh1", NULL, NULL, NULL, NULL},
+    {"JAPParamCh2", NULL, NULL, NULL, NULL},
+    {"JAPParamCh3", NULL, NULL, NULL, NULL},
+    {"JAPW53ParamCh0", NULL, NULL, NULL, NULL},
+    {"JAPW53ParamCh1", NULL, NULL, NULL, NULL},
+    {"JAPW53ParamCh2", NULL, NULL, NULL, NULL},
+    {"JAPW53ParamCh3", NULL, NULL, NULL, NULL},
+    {"FixDfsLimit", "fixdfslimit", NULL, hooker, "0"},
+    {"LongPulseRadarTh", "lpsradarth", NULL, hooker, "0"},
+    {"AvgRssiReq", "avgrssireq", NULL, hooker, "0"},
+    {"DFS_R66", "dfs_r66", NULL, hooker, "0"},
+    {"BlockCh", "blockch", NULL, hooker, NULL},
+    {"GreenAP", "greenap", NULL, hooker, "0"},
+    {"WapiPsk1", NULL, NULL, NULL, NULL},
+    {"WapiPsk2", NULL, NULL, NULL, NULL},
+    {"WapiPsk3", NULL, NULL, NULL, NULL},
+    {"WapiPsk4", NULL, NULL, NULL, NULL},
+    {"WapiPsk5", NULL, NULL, NULL, NULL},
+    {"WapiPsk6", NULL, NULL, NULL, NULL},
+    {"WapiPsk7", NULL, NULL, NULL, NULL},
+    {"WapiPsk8", NULL, NULL, NULL, NULL},
+    {"WapiPskType", NULL, NULL, NULL, NULL},
+    {"Wapiifname", NULL, NULL, NULL, NULL},
+    {"WapiAsCertPath", NULL, NULL, NULL, NULL},
+    {"WapiUserCertPath", NULL, NULL, NULL, NULL},
+    {"WapiAsIpAddr", NULL, NULL, NULL, NULL},
+    {"WapiAsPort", NULL, NULL, NULL, NULL},
+    {"RekeyMethod", "rekeymethod", NULL, hooker, "TIME"},
+    {"MeshAutoLink", "mesh_autolink", NULL, hooker, "0"},
+    {"MeshAuthMode", "mesh_authmode", NULL, hooker, NULL},
+    {"MeshEncrypType", "mesh_enctype", NULL, hooker, NULL},
+    {"MeshDefaultkey", "mesh_defkey", NULL, hooker, "0"},
+    {"MeshWEPKEY", "mesh_wepkey", NULL, hooker, NULL},
+    {"MeshWPAKEY", "mesh_wpakey", NULL, hooker, NULL},
+    {"MeshId", "mesh_id", NULL, hooker, NULL},
+    {"HSCounter", "hscount", NULL, hooker, "0"},
+    {"HT_BADecline", "ht_badec", NULL, hooker, "0"},
+    {"HT_STBC", "ht_stbc", NULL, hooker, "0"},
+    {"HT_LDPC", "ht_ldpc", NULL, hooker, "1"},
+    {"HT_TxStream", "ht_txstream", NULL, hooker, "1"},
+    {"HT_RxStream", "ht_rxstream", NULL, hooker, "1"},
+    {"HT_PROTECT", "ht_protect", NULL, hooker, "1"},
+    {"HT_DisallowTKIP", "ht_distkip", NULL, hooker, "0"},
+    {"HT_BSSCoexistence", "ht_bsscoexist", NULL, hooker, "0"},
+    {"WscConfMode", "wsc_confmode", NULL, hooker, "0"},
+    {"WscConfStatus", "wsc_confstatus", NULL, hooker, "2"},
+    {"WCNTest", "wcntest", NULL, hooker, "0"},
+    {"WdsPhyMode", "wds_phymode", NULL, hooker, NULL},
+    {"RADIUS_Acct_Server", "radius_acctserver", NULL, hooker, NULL},
+    {"RADIUS_Acct_Port", "radius_acctport", NULL, hooker, "1813"},
+    {"RADIUS_Acct_Key", "radius_acctkey", NULL, hooker, NULL},
+    {"Ethifname", "ethifname", NULL, hooker, NULL},
+    {"session_timeout_interval", "session_intv", NULL, hooker, "0"},
+    {"idle_timeout_interval", "idle_intv", NULL, hooker, "0"},
+    {"WiFiTest", NULL, NULL, NULL, "0"},
+    {"TGnWifiTest", "tgnwifitest", NULL, hooker, "0"},
+    {"ApCliEnable", NULL, NULL, NULL, "0"},
+    {"ApCliSsid", NULL, NULL, NULL, NULL},
+    {"ApCliBssid", NULL, NULL, NULL, NULL},
+    {"ApCliAuthMode", NULL, NULL, NULL, NULL},
+    {"ApCliEncrypType", NULL, NULL, NULL, NULL},
+    {"ApCliWPAPSK", NULL, NULL, NULL, NULL},
+    {"ApCliDefaultKeyID", NULL, NULL, NULL, "0"},
+    {"ApCliKey1Type", NULL, NULL, NULL, "0"},
+    {"ApCliKey1Str", NULL, NULL, NULL, NULL},
+    {"ApCliKey2Type", NULL, NULL, NULL, "0"},
+    {"ApCliKey2Str", NULL, NULL, NULL, NULL},
+    {"ApCliKey3Type", NULL, NULL, NULL, "0"},
+    {"ApCliKey3Str", NULL, NULL, NULL, NULL},
+    {"ApCliKey4Type", NULL, NULL, NULL, "0"},
+    {"ApCliKey4Str", NULL, NULL, NULL, NULL},
+    {"EfuseBufferMode", "efusebufmode", NULL, hooker, "0"},
+    {"E2pAccessMode", "e2paccmode", NULL, hooker, "1"},
+    {"RadioOn", "radio", NULL, hooker, "1"},
+    {"BW_Enable", "bw_enable", NULL, hooker, "0"},
+    {"BW_Root", "bw_root", NULL, hooker, "0"},
+    {"BW_Priority", "bw_priority", NULL, hooker, NULL},
+    {"BW_Guarantee_Rate", "bw_grtrate", NULL, hooker, NULL},
+    {"BW_Maximum_Rate", "bw_maxrate", NULL, hooker, NULL},
 
     /* add more configurations */
-    {"AutoChannelSkipList", "autoch_skip", {0}, hooker, NULL},
-    {"WscConfMethod", "wsc_confmethod", {0}, hooker, NULL},
-    {"WscKeyASCII", "wsc_keyascii", {0}, hooker, NULL},
-    {"WscSecurityMode", "wsc_security", {0}, hooker, NULL},
-    {"Wsc4digitPinCode", "wsc_4digitpin", {0}, hooker, NULL},
-    {"WscVendorPinCode", "wsc_vendorpin", {0}, hooker, NULL},
-    {"WscV2Support", "wsc_v2", {0}, hooker, NULL},
-    {"HT_MIMOPS", "mimops", {0}, hooker, "3"},
-    {"G_BAND_256QAM", "g256qam", {0}, hooker, "1"},
-    {"DBDC_MODE", "dbdc", {0}, hooker, "0"},
-    {"txbf", "txbf", {0}, hooker, "0"},
-    {"IgmpSnEnable", "igmpsnoop", {0}, hooker, "1"},
+    {"AutoChannelSkipList", "autoch_skip", NULL, hooker, NULL},
+    {"WscConfMethod", "wsc_confmethod", NULL, hooker, NULL},
+    {"WscKeyASCII", "wsc_keyascii", NULL, hooker, NULL},
+    {"WscSecurityMode", "wsc_security", NULL, hooker, NULL},
+    {"Wsc4digitPinCode", "wsc_4digitpin", NULL, hooker, NULL},
+    {"WscVendorPinCode", "wsc_vendorpin", NULL, hooker, NULL},
+    {"WscV2Support", "wsc_v2", NULL, hooker, NULL},
+    {"HT_MIMOPS", "mimops", NULL, hooker, "3"},
+    {"G_BAND_256QAM", "g256qam", NULL, hooker, "1"},
+    {"DBDC_MODE", "dbdc", NULL, hooker, "0"},
+    {"IgmpSnEnable", "igmpsnoop", NULL, hooker, "1"},
+    {"MUTxRxEnable", "mutxrxenable", NULL, hooker, "1"},
+    {"ITxBfEnCond", "itxbfencond", NULL, hooker, "0"},
+    {"BandSteering", "bandsteering", NULL, hooker, "0"},
 
-    {"MUTxRxEnable", "mutxrxenable", {0}, hooker, "1"},
-
-    {"ITxBfEnCond", "itxbfencond", {0}, hooker, "0"},
-
-
+    {NULL, "txbf", NULL, hooker, "0"}, // all txbf params use this hook
 };
+
+extra_cfg * __extra_cfgs__ = NULL;
 
 static struct uci_context * uci_ctx;
 static struct uci_package * uci_wireless;
 static wifi_params wifi_cfg[DEVNUM_MAX];
 
 
-char * __get_value(char * datkey)
+char * __get_value_by_datkey(char * datkey, wifi_params * wifi)
 {
     int i;
-
     for(i=0; i<sizeof(CFG_ELEMENTS)/sizeof(CFG_ELEMENTS[0]); i++)
-    {
-        if(0 == strcmp(datkey, CFG_ELEMENTS[i].dat_key))
-            return CFG_ELEMENTS[i].value;
-    }
+        if(wifi->params[i].dat_key && 0 == strcmp(datkey, wifi->params[i].dat_key))
+            return wifi->params[i].value;
+    return NULL;
+}
+
+
+char * __get_value_by_ucikey(char * ucikey, wifi_params * wifi)
+{
+    int i;
+    for(i=0; i<sizeof(CFG_ELEMENTS)/sizeof(CFG_ELEMENTS[0]); i++)
+        if(wifi->params[i].uci_key && 0 == strcmp(ucikey, wifi->params[i].uci_key))
+            return wifi->params[i].value;
     return NULL;
 }
 
@@ -464,7 +485,7 @@ char * __dump_all(void)
             p = &wifi_cfg[i].params[j];
             printf("%s %3d. %-16s\t%-16s\t%-16s\t%-8s\t%s\n",
                    wifi_cfg[i].devname, j, p->dat_key, p->uci_key,
-                   p->value[0]?p->value:"(null)", p->hook?"Y":"-", p->defvalue);
+                   p->value?p->value:"(null)", p->hook?"Y":"-", p->defvalue);
         }
     }
     return NULL;
@@ -474,9 +495,9 @@ char * __dump_all(void)
 void parse_dat(char * devname, char * datpath)
 {
     FILE * fp = NULL;
-    char buffer[128] = {0};
-    char k[32] = {0};
-    char v[32] = {0};
+    char buffer[1024] = {0};
+    char k[512] = {0};
+    char v[512] = {0};
     int i = 0, n = 0;
     char * p = NULL;
     char * q = NULL;
@@ -538,14 +559,26 @@ void parse_dat(char * devname, char * datpath)
 
         for ( n=0; n<sizeof(CFG_ELEMENTS)/sizeof(CFG_ELEMENTS[0]); n++)
         {
-            if(0 == strcmp(CFG_ELEMENTS[n].dat_key, k))
+            if(CFG_ELEMENTS[n].dat_key && 0 == strcmp(CFG_ELEMENTS[n].dat_key, k))
             {
-                strncpy(cfg->params[n].value, v, sizeof(CFG_ELEMENTS[n].value));
+                cfg->params[n].value = strdup(v);
+                printf("%s(), <%s>=<%s>", __FUNCTION__,CFG_ELEMENTS[n].dat_key,cfg->params[n].value);
                 break;
             }
         }
         if (n >= sizeof(CFG_ELEMENTS)/sizeof(CFG_ELEMENTS[0]))
-            printf("!!! <%s> not supported\n", k);
+        {
+            printf("<%s> not supported by uci2dat yet\n", k);
+            extra_cfg * c = (extra_cfg *)malloc(sizeof(extra_cfg));
+            memset(c, 0, sizeof(extra_cfg));
+            c->cfg.dat_key = strdup(k);
+            c->cfg.uci_key = strdup(k);
+            c->cfg.value = strdup(v);
+            c->cfg.defvalue = NULL;
+            c->cfg.hook = NULL;
+            c->next = __extra_cfgs__;
+            __extra_cfgs__ = c;
+        }
         else
             printf("<%s>=<%s>\n", k, v);
 
@@ -612,8 +645,7 @@ void parse_uci(char * arg)
                     value = uci_lookup_option_string(uci_ctx, s, CFG_ELEMENTS[i].uci_key);
                     if(value)
                     {
-                        strncpy(wifi_cfg[cur_dev].params[i].value,
-                                value, sizeof(CFG_ELEMENTS[i].value));
+                        wifi_cfg[cur_dev].params[i].value = strdup(value);
                         printf("%s(),    %s=%s\n", __FUNCTION__, CFG_ELEMENTS[i].uci_key, value);
                     }
                 }
@@ -664,7 +696,7 @@ void parse_uci(char * arg)
 #else
 #define STRNCPPP(dst,src) \
                 do {\
-                    strncpy(dst.value, src, sizeof(dst.value)); \
+                    dst.value = strdup(src);\
                     printf("%s(),    %s=%s\n", __FUNCTION__, dst.uci_key, src); \
                 } while(0)
 
@@ -761,12 +793,7 @@ void parse_uci(char * arg)
                 }
 
             }
-
-            /* key */
-
-
 #endif
-
             wifi_cfg[cur_dev].vifnum++;
         }
     }
@@ -806,17 +833,20 @@ void hooker(FILE * fp, param * p, const char * devname)
             printf("%s() array index error, L%d\n", __FUNCTION__, __LINE__);
             return;
         }
-        FPRINT(fp, p, "%s", wifi_cfg[N].vifs[i].ssid.value);
+        FPRINT(fp, p, wifi_cfg[N].vifs[i].ssid.value);
     }
     else if(0 == strcmp(p->dat_key, "BssidNum"))
     {
-        FPRINT(fp, p, "%d", wifi_cfg[N].vifnum);
+        VFPRINT(fp, p, "%d", wifi_cfg[N].vifnum);
     }
     else if(0 == strcmp(p->dat_key, "EncrypType"))
     {
         for(i=0; i<wifi_cfg[N].vifnum; i++)
         {
             if(i>0) FPRINT(fp, p, ";");
+
+            if (!wifi_cfg[N].vifs[i].authmode.value) continue;
+            if (!wifi_cfg[N].vifs[i].cipher.value) continue;
 
             if (0 == strcasecmp(wifi_cfg[N].vifs[i].authmode.value, "none"))
                 FPRINT(fp, p, "NONE");
@@ -840,6 +870,7 @@ void hooker(FILE * fp, param * p, const char * devname)
         for(i=0; i<wifi_cfg[N].vifnum; i++)
         {
             if(i>0) FPRINT(fp, p, ";");
+            if (!wifi_cfg[N].vifs[i].authmode.value) continue;
 
             if (0 == strcasecmp(wifi_cfg[N].vifs[i].authmode.value, "none"))
                 FPRINT(fp, p, "OPEN");
@@ -874,8 +905,11 @@ void hooker(FILE * fp, param * p, const char * devname)
     {
         for(i=0; i<wifi_cfg[N].vifnum; i++)
         {
-            if(i>0) FPRINT(fp, p, ";");
-            FPRINT(fp, p, wifi_cfg[N].vifs[i].hidden.value[0]=='1'?"1":"0");
+            if (i>0) FPRINT(fp, p, ";");
+            if (!wifi_cfg[N].vifs[i].hidden.value)
+                FPRINT(fp, p, "0");
+            else
+                FPRINT(fp, p, wifi_cfg[N].vifs[i].hidden.value);
         }
     }
     else if(0 == strcmp(p->dat_key, "Channel"))
@@ -903,10 +937,10 @@ void hooker(FILE * fp, param * p, const char * devname)
     {
         if(0 == strcmp(p->value, "2"))
             FPRINT(fp, p, "1");
-	else if (0 == strcmp(p->value, "3"))
-	    FPRINT(fp, p, "2");
-	else if (0 == strcmp(p->value, "4"))
-	    FPRINT(fp, p, "3");
+        else if (0 == strcmp(p->value, "3"))
+            FPRINT(fp, p, "2");
+        else if (0 == strcmp(p->value, "4"))
+            FPRINT(fp, p, "3");
         else
             FPRINT(fp, p, "0");
     }
@@ -918,18 +952,19 @@ void hooker(FILE * fp, param * p, const char * devname)
             printf("%s() array index error, L%d\n", __FUNCTION__, __LINE__);
             return;
         }
-		if (0 == strcasecmp(wifi_cfg[N].vifs[i].authmode.value, "psk")
-			|| 0 == strcasecmp(wifi_cfg[N].vifs[i].authmode.value, "psk2")
-			|| 0 == strcasecmp(wifi_cfg[N].vifs[i].authmode.value, "psk+psk2")
-			|| 0 == strcasecmp(wifi_cfg[N].vifs[i].authmode.value, "psk-mixed"))
-        	FPRINT(fp, p, "%s", wifi_cfg[N].vifs[i].key.value);
+        if (!wifi_cfg[N].vifs[i].authmode.value) return;
+        if (0 == strcasecmp(wifi_cfg[N].vifs[i].authmode.value, "psk")
+            || 0 == strcasecmp(wifi_cfg[N].vifs[i].authmode.value, "psk2")
+            || 0 == strcasecmp(wifi_cfg[N].vifs[i].authmode.value, "psk+psk2")
+            || 0 == strcasecmp(wifi_cfg[N].vifs[i].authmode.value, "psk-mixed"))
+            FPRINT(fp, p, wifi_cfg[N].vifs[i].key.value);
     }
     else if(0 == strcmp(p->dat_key, "RADIUS_Server"))
     {
         for(i=0; i<wifi_cfg[N].vifnum; i++)
         {
             if(i>0) FPRINT(fp, p, ";");
-            FPRINT(fp, p, "%s", wifi_cfg[N].vifs[i].auth_server.value);
+            FPRINT(fp, p, wifi_cfg[N].vifs[i].auth_server.value);
         }
     }
     else if(0 == strcmp(p->dat_key, "RADIUS_Port"))
@@ -937,7 +972,7 @@ void hooker(FILE * fp, param * p, const char * devname)
         for(i=0; i<wifi_cfg[N].vifnum; i++)
         {
             if(i>0) FPRINT(fp, p, ";");
-            FPRINT(fp, p, "%s", wifi_cfg[N].vifs[i].auth_port.value);
+            FPRINT(fp, p, wifi_cfg[N].vifs[i].auth_port.value);
         }
     }
     else if(0 == strmatch(p->dat_key, "RADIUS_Key?"))//(0 == strncmp(p->dat_key, "WPAPSK", 6))
@@ -948,14 +983,14 @@ void hooker(FILE * fp, param * p, const char * devname)
             printf("%s() array index error, L%d\n", __FUNCTION__, __LINE__);
             return;
         }
-        FPRINT(fp, p, "%s", wifi_cfg[N].vifs[i].auth_secret.value);
+        FPRINT(fp, p, wifi_cfg[N].vifs[i].auth_secret.value);
     }
     else if(0 == strcmp(p->dat_key, "PreAuth"))
     {
         for(i=0; i<wifi_cfg[N].vifnum; i++)
         {
             if(i>0) FPRINT(fp, p, ";");
-            FPRINT(fp, p, "%s", wifi_cfg[N].vifs[i].preauth.value);
+            FPRINT(fp, p, wifi_cfg[N].vifs[i].preauth.value);
         }
     }
     else if(0 == strcmp(p->dat_key, "RekeyInterval"))
@@ -963,7 +998,7 @@ void hooker(FILE * fp, param * p, const char * devname)
         for(i=0; i<wifi_cfg[N].vifnum; i++)
         {
             if(i>0) FPRINT(fp, p, ";");
-            FPRINT(fp, p, "%s", wifi_cfg[N].vifs[i].rekeyinteval.value);
+            FPRINT(fp, p, wifi_cfg[N].vifs[i].rekeyinteval.value);
         }
     }
     else if(0 == strcmp(p->dat_key, "PMKCachePeriod"))
@@ -971,12 +1006,8 @@ void hooker(FILE * fp, param * p, const char * devname)
         for(i=0; i<wifi_cfg[N].vifnum; i++)
         {
             if(i>0) FPRINT(fp, p, ";");
-            FPRINT(fp, p, "%s", wifi_cfg[N].vifs[i].pmkcacheperiod.value);
+            FPRINT(fp, p, wifi_cfg[N].vifs[i].pmkcacheperiod.value);
         }
-    }
-    else if(0 == strcmp(p->dat_key, "RekeyMethod"))
-    {
-        FPRINT(fp, p, "%s", p->defvalue);
     }
 
     else if(0 == strcmp(p->dat_key, "IEEE8021X"))
@@ -984,90 +1015,110 @@ void hooker(FILE * fp, param * p, const char * devname)
         for(i=0; i<wifi_cfg[N].vifnum; i++)
         {
             if(i>0) FPRINT(fp, p, ";");
+            if (!wifi_cfg[N].vifs[i].authmode.value) continue;
             if(0 == strcasecmp(wifi_cfg[N].vifs[i].authmode.value, "8021x"))
-                FPRINT(fp, p, "%s", "1");
+                FPRINT(fp, p, "1");
         }
     }
     else if(0 == strmatch(p->dat_key, "DefaultKeyID"))  /* WEP */
     {
-    	for(i=0; i<wifi_cfg[N].vifnum; i++)
+        for(i=0; i<wifi_cfg[N].vifnum; i++)
         {
-	    	if (0 == strcasecmp(wifi_cfg[N].vifs[i].authmode.value, "wep-open")
-				|| 0 == strcasecmp(wifi_cfg[N].vifs[i].authmode.value, "wep-shared"))
-			{
-		            FPRINT(fp, p, "%s;", wifi_cfg[N].vifs[i].key.value);
-			}
-			else 
-				FPRINT(fp, p, "%s;", "1");//default value
-		}
+            if (!wifi_cfg[N].vifs[i].authmode.value) continue;
+            if (0 == strcasecmp(wifi_cfg[N].vifs[i].authmode.value, "wep-open")
+                || 0 == strcasecmp(wifi_cfg[N].vifs[i].authmode.value, "wep-shared"))
+            {
+                FPRINT(fp, p, wifi_cfg[N].vifs[i].key.value);
+                FPRINT(fp, p, ";");
+            }
+            else
+                FPRINT(fp, p, "1;");//default value
+        }
     }
 #if 0
     else if(0 == strmatch(p->dat_key, "Key?Type"))  /* WEP */
     {
         /* TODO: do we need to support byte sequence?  */
-        FPRINT(fp, p, "%s", "0");
+        FPRINT(fp, p, "0");
     }
 #endif
     else if(0 == strmatch(p->dat_key, "Key?Type"))  /* WEP */
     {
-	int j;
-	i = atoi(p->dat_key+3)-1;
-	for(j=0; j<wifi_cfg[N].vifnum; j++)
-	{
-		if(0 == strncmp("s:", wifi_cfg[N].vifs[j].wepkey[i].value, 2))
-			strcpy(wifi_cfg[N].vifs[j].wepkey[i].value,wifi_cfg[N].vifs[j].wepkey[i].value+2);
-		if( 5 == strlen(wifi_cfg[N].vifs[j].wepkey[i].value) || 13 == strlen(wifi_cfg[N].vifs[j].wepkey[i].value))
-			FPRINT(fp, p, "%s;", "1");//wep key type is asic
-		else
-			FPRINT(fp, p, "%s;", "0");//wep key type is hex
-	}
+        int j;
+        i = atoi(p->dat_key+3)-1;
+        for(j=0; j<wifi_cfg[N].vifnum; j++)
+        {
+            if (!wifi_cfg[N].vifs[j].wepkey[i].value)
+            {
+                FPRINT(fp, p, "1;");
+                continue;
+            }
+            if(0 == strncmp("s:", wifi_cfg[N].vifs[j].wepkey[i].value, 2))
+                strcpy(wifi_cfg[N].vifs[j].wepkey[i].value,wifi_cfg[N].vifs[j].wepkey[i].value+2);
+            if( 5 == strlen(wifi_cfg[N].vifs[j].wepkey[i].value) || 13 == strlen(wifi_cfg[N].vifs[j].wepkey[i].value))
+                FPRINT(fp, p, "1;");//wep key type is asic
+            else
+                FPRINT(fp, p, "0;");//wep key type is hex
+        }
     }
     else if(0 == strmatch(p->dat_key, "Key?Str?"))  /* WEP */
     {
         int j;
         i = atoi(p->dat_key+3)-1;
         j = atoi(p->dat_key+7)-1;
+        if (!wifi_cfg[N].vifs[j].wepkey[i].value) return;
         if(0 == strncmp("s:", wifi_cfg[N].vifs[j].wepkey[i].value, 2))
-            FPRINT(fp, p, "%s", wifi_cfg[N].vifs[j].wepkey[i].value+2);
+            FPRINT(fp, p, wifi_cfg[N].vifs[j].wepkey[i].value+2);
         else
-            FPRINT(fp, p, "%s", wifi_cfg[N].vifs[j].wepkey[i].value);
+            FPRINT(fp, p, wifi_cfg[N].vifs[j].wepkey[i].value);
     }
-    else if (0 == strcmp(p->dat_key, "txbf"))
+    else if (0 == strcmp(p->dat_key, "ETxBfIncapable"))
     {
-       if (0 == strcmp(p->value, "3"))
-       {
-            FPRINT(fp, p, "3\n");
-            FPRINT(fp, p, "ETxBfEnCond=1\n");
-            FPRINT(fp, p, "ETxBfIncapable=0\n");
-            FPRINT(fp, p, "ITxBfEn=1");
-       }
-       else if (0 == strcmp(p->value, "2"))
-       {
-            FPRINT(fp, p, "2\n");
-            FPRINT(fp, p, "ETxBfEnCond=1\n");
-            FPRINT(fp, p, "ETxBfIncapable=0\n");
-            FPRINT(fp, p, "ITxBfEn=0");
-       }
-       else if (0 == strcmp(p->value, "1"))
-       {
-            FPRINT(fp, p, "1\n");
-            FPRINT(fp, p, "ETxBfEnCond=0\n");
-            FPRINT(fp, p, "ETxBfIncapable=1\n");
-            FPRINT(fp, p, "ITxBfEn=1");
-       }
-       else if (0 == strcmp(p->value, "0"))
-       {
-            FPRINT(fp, p, "0\n");
-            FPRINT(fp, p, "ETxBfEnCond=0\n");
-            FPRINT(fp, p, "ETxBfIncapable=1\n");
-            FPRINT(fp, p, "ITxBfEn=0");
-       }else //default eBF & iBF On
-       {	
-            FPRINT(fp, p, "3\n");
-            FPRINT(fp, p, "ETxBfEnCond=1\n");
-            FPRINT(fp, p, "ETxBfIncapable=0\n");
-            FPRINT(fp, p, "ITxBfEn=1");
-       }
+        char * value =  __get_value_by_ucikey("txbf", &wifi_cfg[N]);
+        if (!value)
+            FPRINT(fp, p, "0");
+        else if (0 == strcmp(value, "3"))
+            FPRINT(fp, p, "0");
+        else if (0 == strcmp(value, "2"))
+            FPRINT(fp, p, "0");
+        else if (0 == strcmp(value, "1"))
+            FPRINT(fp, p, "1");
+        else if (0 == strcmp(value, "0"))
+            FPRINT(fp, p, "1");
+        else
+            FPRINT(fp, p, "0");
+    }
+    else if (0 == strcmp(p->dat_key, "ITxBfEn"))
+    {
+        char * value =  __get_value_by_ucikey("txbf", &wifi_cfg[N]);
+        if (!value)
+            FPRINT(fp, p, "1");
+        else if (0 == strcmp(value, "3"))
+            FPRINT(fp, p, "1");
+        else if (0 == strcmp(value, "2"))
+            FPRINT(fp, p, "0");
+        else if (0 == strcmp(value, "1"))
+            FPRINT(fp, p, "1");
+        else if (0 == strcmp(value, "0"))
+            FPRINT(fp, p, "0");
+        else
+            FPRINT(fp, p, "1");
+    }
+    else if (0 == strcmp(p->dat_key, "ETxBfEnCond"))
+    {
+        char * value =  __get_value_by_ucikey("txbf", &wifi_cfg[N]);
+        if (!value)
+            FPRINT(fp, p, "1");
+        else if (0 == strcmp(value, "3"))
+            FPRINT(fp, p, "1");
+        else if (0 == strcmp(value, "2"))
+            FPRINT(fp, p, "1");
+        else if (0 == strcmp(value, "1"))
+            FPRINT(fp, p, "0");
+        else if (0 == strcmp(value, "0"))
+            FPRINT(fp, p, "0");
+        else
+            FPRINT(fp, p, "1");
     }
 #if 0
     else if(0 == strmatch(p->dat_key, "ApCliKey?Type"))  /* Ap Client Mode */
@@ -1103,10 +1154,11 @@ void hooker(FILE * fp, param * p, const char * devname)
 void gen_dat(char * devname, char * datpath)
 {
     FILE       * fp = NULL;
-    char buffer[64] = {0};
+    char buffer[1024] = {0};
     int           i = 0;
     param       * p = NULL;
     wifi_params * cfg = NULL;
+    extra_cfg   * e = __extra_cfgs__;
 
     printf("API: %s(%s, %s)\n", __FUNCTION__, devname, datpath);
 
@@ -1149,15 +1201,33 @@ void gen_dat(char * devname, char * datpath)
     for(i=0; i<sizeof(CFG_ELEMENTS)/sizeof(CFG_ELEMENTS[0]); i++)
     {
         p = &cfg->params[i];
+        if (!p->dat_key) continue;
         printf("%s(), %s\n", __FUNCTION__, p->dat_key);
-        fprintf(fp, "%s=", p->dat_key);
-        if(p->hook)
-            p->hook(fp, p, cfg->devname);
-        else if(strlen(p->value) > 0)
-            fprintf(fp, p->value);
-        else if(p->defvalue)
-            fprintf(fp, p->defvalue);
+        /* either get value from dat or uci */
+        if(p->value)
+        {
+            fprintf(fp, "%s=", p->dat_key);
+            if(p->hook)
+                p->hook(fp, p, cfg->devname);
+            else if(strlen(p->value) > 0)
+                fprintf(fp, p->value);
+            /*
+            else if(p->defvalue)
+                fprintf(fp, p->defvalue);
+            */
+            fprintf(fp, "\n");
+        }
+    }
+
+    while (e)
+    {
+        fprintf(fp, "%s=", e->cfg.dat_key);
+        if(strlen(e->cfg.value) > 0)
+            fprintf(fp, e->cfg.value);
+        else if(e->cfg.defvalue)
+            fprintf(fp, e->cfg.defvalue);
         fprintf(fp, "\n");
+        e = e->next;
     }
 
     fclose(fp);
@@ -1243,7 +1313,6 @@ int main(int argc, char ** argv)
     int opt = 0;
     char * dev = NULL;
     char * dat = NULL;
-    char olddat[128] = {0};
     int test = 0;
 
     while ((opt = getopt (argc, argv, "htf:d:")) != -1)
@@ -1307,8 +1376,7 @@ int main(int argc, char ** argv)
 
     if(dev && dat)
     {
-        snprintf(olddat, sizeof(olddat), "/rom%s", dat);
-        parse_dat(dev, olddat);
+        parse_dat(dev, dat);
         parse_uci(NULL);
     }
 
@@ -1317,7 +1385,7 @@ int main(int argc, char ** argv)
         FILE * fp = NULL;
         char * p = NULL;
         char device[32] = {0};
-        char profile[64] = {0};
+        char profile[128] = {0};
         fp = popen("cat /etc/config/wireless"
                    " | grep \"wifi-device\""
                    " | sed  -n \"s/config[ \t]*wifi-device[\t]*//gp\"",

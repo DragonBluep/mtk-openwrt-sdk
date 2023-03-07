@@ -3,7 +3,14 @@
 
 START=95
 boot() {
-	[ -d /tmp/root ] && mount_root done
+	[ -d /tmp/root ] && {
+		cat /proc/cpuinfo | grep 7623
+		if [ "$?" == "0" ]; then
+			mount_root2 done;
+		else
+			mount_root done;
+		fi
+	}
 	block mount
 
 	# process user commands

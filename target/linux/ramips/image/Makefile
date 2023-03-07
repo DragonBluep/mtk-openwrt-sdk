@@ -24,20 +24,20 @@ define Image/Build/Initramfs
 endef
 endif
 
-ifeq ($(CONFIG_SOC_RT288X),y)
+ifeq ($(CONFIG_RALINK_MT7621),y)
+ifeq ($(CONFIG_RT2880_DRAM_512M),y)
 define kernel_entry
--a 0x88000000 -e 0x88000000
+-a 0x82001000 -e 0x82001000
 endef
 else
-ifeq ($(CONFIG_RALINK_MT7621),y)
 define kernel_entry
--a 0x80001000 -e 0x80001000
+-a 0x81001000 -e 0x81001000
 endef
+endif
 else
 define kernel_entry
 -a 0x80000000 -e 0x80000000
 endef
-endif
 endif
 
 define MkCombineduImage
@@ -58,7 +58,7 @@ endef
 #
 
 define MkImage
-	$(eval imagename=$(if $(4),$(4),OpenWrt Linux-$(LINUX_VERSION)))
+	$(eval imagename=$(if $(4),$(4),OpenWrt Linux-$(LINUX_EXT_VERSION)))
 	-mkimage -A mips -O linux -T kernel -C $(1) $(call kernel_entry)\
 		-n "$(imagename)" \
 		-d $(2) $(3)

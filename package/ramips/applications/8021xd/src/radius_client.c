@@ -254,6 +254,11 @@ int Radius_client_send(rtapd *rtapd, struct radius_msg *msg, RadiusType msg_type
     char *name;
     int s, res = 0;
 
+#if 1 //change to sendto
+    struct sockaddr_in serv;
+    memset(&serv, 0, sizeof(serv));
+    serv.sin_family = AF_INET;
+#endif
 #if MULTIPLE_RADIUS
     shared_secret = rtapd->conf->mbss_auth_server[ApIdx]->shared_secret;
     shared_secret_len = rtapd->conf->mbss_auth_server[ApIdx]->shared_secret_len;
@@ -268,7 +273,21 @@ int Radius_client_send(rtapd *rtapd, struct radius_msg *msg, RadiusType msg_type
     Radius_msg_finish(msg, shared_secret, shared_secret_len);
     name = "authentication";
 
+#if MULTIPLE_RADIUS
+    serv.sin_addr.s_addr = rtapd->conf->mbss_auth_server[ApIdx]->addr.s_addr;
+    serv.sin_port = htons(rtapd->conf->mbss_auth_server[ApIdx]->port);
+#else
+    serv.sin_addr.s_addr = rtapd->conf->auth_server->addr.s_addr;
+    serv.sin_port = htons(rtapd->conf->auth_server->port);
+#endif
+
+#if 1 //change to sendto
+    res = sendto( s, msg->buf, msg->buf_used, 0, ( struct sockaddr * )&serv,
+                  sizeof(serv) );
+#else
     res = send(s, msg->buf, msg->buf_used, 0);
+#endif
+
     if (res < 0)
         perror("send[RADIUS]");
 
@@ -287,6 +306,7 @@ static void Radius_client_receive(int sock, void *eloop_ctx, void *sock_ctx)
     struct radius_rx_handler *handlers;
     size_t num_handlers;
     struct radius_msg_list *req, *prev_req;
+    int invalid_authenticator = 0;
 
     DBGPRINT(RT_DEBUG_TRACE, "RADIUS_CLIENT_RECEIVE : msg_type= %d \n", msg_type);
     len = recv(sock, buf, sizeof(buf), 0);
@@ -358,14 +378,17 @@ static void Radius_client_receive(int sock, void *eloop_ctx, void *sock_ctx)
             case RADIUS_RX_QUEUED:
                 Radius_client_msg_free(req);
                 return;
+            case RADIUS_RX_INVALID_AUTHENTICATOR:
+                invalid_authenticator++;
+            /* continue */
             case RADIUS_RX_UNKNOWN:
                 /* continue with next handler */
                 break;
         }
     }
 
-    DBGPRINT(RT_DEBUG_ERROR,"No RADIUS RX handler found (type=%d code=%d id=%d) - dropping "
-             "packet\n", msg_type, msg->hdr->code, msg->hdr->identifier);
+    DBGPRINT(RT_DEBUG_ERROR,"No RADIUS RX handler found (type=%d code=%d id=%d) %s- dropping "
+             "packet\n", msg_type, msg->hdr->code, msg->hdr->identifier, invalid_authenticator ? " [INVALID AUTHENTICATOR]" : "");
     Radius_client_msg_free(req);
 
 fail:
@@ -470,6 +493,8 @@ Radius_change_server(rtapd *rtapd, struct hostapd_radius_server *nserv,
             perror("bind");
             return -1;
         }*/
+
+#if 0 //change to sendto
     memset(&serv, 0, sizeof(serv));
     serv.sin_family = AF_INET;
     serv.sin_addr.s_addr = nserv->addr.s_addr;
@@ -479,7 +504,9 @@ Radius_change_server(rtapd *rtapd, struct hostapd_radius_server *nserv,
         perror("connect[radius]");
         return -1;
     }
-    DBGPRINT(RT_DEBUG_TRACE, "Radius_change_server :: Connect to Radius Server(%s)\n", inet_ntoa(nserv->addr));
+#endif
+
+    DBGPRINT(RT_DEBUG_TRACE, "Radius_change_server :: change to Radius Server(%s)\n", inet_ntoa(nserv->addr));
     return 0;
 }
 

@@ -86,8 +86,8 @@ int main(int argc, char *argv[])
     args2=malloc(sizeof(struct mtr_list_args) + sizeof(struct mtr_args)*511);
     if (NULL == args2)
     {
-	    printf(" allocate memory for mtr_list_args and mtr_args failed.\n");
-	    return 0;
+        printf(" allocate memory for mtr_list_args and mtr_args failed.\n");
+        return 0;
     }
     fd = open("/dev/"MTR_DEVNAME, O_RDONLY);
     if (fd < 0)
@@ -231,8 +231,8 @@ int main(int argc, char *argv[])
                 else
                 {
                     printf("Error: -u 10ms/50ms/100ms/500ms/1000ms/5000ms/10000ms\n");
-                free(args2);
-                close(fd);
+                    free(args2);
+                    close(fd);
                     return 0;
                 }
                 break;
@@ -248,8 +248,8 @@ int main(int argc, char *argv[])
                 else
                 {
                     printf("Error: -v Byte/Pkt\n");
-                free(args2);
-                close(fd);
+                    free(args2);
+                    close(fd);
                     return 0;
                 }
                 break;
@@ -298,8 +298,8 @@ int main(int argc, char *argv[])
                 printf("   :BucketSize=%d Token_Rate:%d MtrInterval=%d\n", args2->entries[i].bk_size, args2->entries[i].token_rate, args2->entries[i].mtr_intval);
             }
             break;
-    default:
-	    result = MTR_FAIL;
+        default:
+            result = MTR_FAIL;
     }
 
 

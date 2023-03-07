@@ -60,7 +60,12 @@ enum { RADIUS_ATTR_USER_NAME = 1,
        RADIUS_ATTR_NAS_PORT_TYPE = 61,
        RADIUS_ATTR_CONNECT_INFO = 77,
        RADIUS_ATTR_EAP_MESSAGE = 79,
-       RADIUS_ATTR_MESSAGE_AUTHENTICATOR = 80
+       RADIUS_ATTR_MESSAGE_AUTHENTICATOR = 80,
+//YF: updated from Hostapd 1.0
+       RADIUS_ATTR_TUNNEL_PRIVATE_GROUP_ID = 81,
+       RADIUS_ATTR_ACCT_INTERIM_INTERVAL = 85,
+       RADIUS_ATTR_CHARGEABLE_USER_IDENTITY = 89,
+       RADIUS_ATTR_NAS_IPV6_ADDRESS = 95
      };
 
 
@@ -75,6 +80,7 @@ enum { RADIUS_ATTR_USER_NAME = 1,
 /* RFC 2548 - Microsoft Vendor-specific RADIUS Attributes */
 #define RADIUS_VENDOR_ID_MICROSOFT 311
 
+#define RADIUS_VENDOR_ID_WFA 40808
 struct radius_attr_vendor_microsoft
 {
     u8 vendor_type;
@@ -164,4 +170,39 @@ static inline int Radius_msg_get_attr_int32(struct radius_msg *msg, u8 type, u32
     return 0;
 }
 
+enum { RADIUS_VENDOR_ATTR_WFA_REMEDIATION = 1,
+       RADIUS_VENDOR_ATTR_WFA_HS2AP = 2,
+       RADIUS_VENDOR_ATTR_WFA_HS2STA = 3,
+       RADIUS_VENDOR_ATTR_WFA_DEAUTH = 4,
+       RADIUS_VENDOR_ATTR_WFA_SESSION_INFO = 5
+     };
+
+struct radius_attr_vendor_wfa
+{
+    u8 vendor_subtype;
+    u8 vendor_sublength;
+} __attribute__ ((packed));
+
+struct wnm_req_data
+{
+    u32 ifindex;
+    u8  peer_mac_addr[6];
+    u32 type;
+    u32 req_len;
+    u8  req[256];
+};
+
+struct btm_req_data
+{
+    u32 ifindex;
+    u8 peer_mac_addr[6];
+    u32 req_len;
+    u8  req[260];
+};
+
+struct radius_attr_vendor
+{
+    u8 vendor_type;
+    u8 vendor_length;
+} STRUCT_PACKED;
 #endif /* RADIUS_H */

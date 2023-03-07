@@ -21,7 +21,7 @@ Index: luci/modules/admin-full/luasrc/controller/admin/network.lua
  		page  = node("admin", "network", "routes")
  		page.target = cbi("admin_network/routes")
  		page.title  = _("Static Routes")
-@@ -465,3 +477,31 @@ end
+@@ -465,3 +477,33 @@ end
  function diag_traceroute6(addr)
  	diag_command("traceroute6 -q 1 -w 2 -n %q 2>&1", addr)
  end
@@ -30,27 +30,29 @@ Index: luci/modules/admin-full/luasrc/controller/admin/network.lua
 +	luci.http.prepare_content("application/json")
 +
 +	-- special treatment for new-wifi-nat.
-+	if nixio.fs.access("/sys/module/mt7615e/refcnt") then
-+		luci.sys.call("iwpriv ra0 set hw_nat_register=0")
-+		luci.sys.call("iwpriv rai0 set hw_nat_register=0")
-+	end
++	-- if nixio.fs.access("/sys/module/mt7615e/refcnt") then
++	-- 	luci.sys.call("iwpriv ra0 set hw_nat_register=0")
++	-- 	luci.sys.call("iwpriv rai0 set hw_nat_register=0")
++	-- end
 +
-+	luci.sys.call("rmmod hw_nat")
++	-- luci.sys.call("rmmod hw_nat")
 +	-- nixio.exec("/bin/sh", "-c", "rmmod hw_nat")
++	luci.sys.call("sh /usr/sbin/hwnat-disable.sh")
 +	luci.http.write_json(0)
 +end
 +
 +function hwnat_enable()
 +	luci.http.prepare_content("application/json")
 +
-+	luci.sys.call("insmod /lib/modules/ralink/hw_nat.ko")
++	luci.sys.call("sh /usr/sbin/hwnat-enable.sh")
++	-- luci.sys.call("insmod /lib/modules/ralink/hw_nat.ko")
 +	-- nixio.exec("/bin/sh", "-c", "insmod /lib/modules/ralink/hw_nat.ko")
 +
 +	-- special treatment for new-wifi-nat.
-+	if nixio.fs.access("/sys/module/mt7615e/refcnt") then
-+		luci.sys.call("iwpriv ra0 set hw_nat_register=1")
-+		luci.sys.call("iwpriv rai0 set hw_nat_register=1")
-+	end
++	-- if nixio.fs.access("/sys/module/mt7615e/refcnt") then
++	-- 	luci.sys.call("iwpriv ra0 set hw_nat_register=1")
++	-- 	luci.sys.call("iwpriv rai0 set hw_nat_register=1")
++	-- end
 +	luci.http.write_json(0)
 +end
 Index: luci/modules/admin-full/luasrc/view/admin_network/hwnat.htm

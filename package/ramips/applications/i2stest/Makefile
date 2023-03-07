@@ -34,7 +34,7 @@ define Build/Prepare
 endef
 
 TARGET_CFLAGS += \
-	-I$(LINUX_DIR)/drivers/char/i2s \
+	-I$(LINUX_DIR)/drivers/char/i2s/core \
 	$(foreach c, $(PKG_KCONFIG),$(if $(CONFIG_$c),-DCONFIG_$(c)=$(CONFIG_$c)))
 
 MAKE_FLAGS += \
