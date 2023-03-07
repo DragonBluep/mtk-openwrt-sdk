@@ -14,7 +14,11 @@ platform_check_image() {
 	[ "$#" -gt 1 ] && return 1
 
 	case "$board" in
-	ralink-soc | \
+	MT7620 | \
+	MT7621 | \
+	MT7628 | \
+	MT7688 | \
+	MT7623 | \
 	3g-6200n | \
 	3g-6200nl | \
 	3g300m | \
@@ -57,6 +61,7 @@ platform_check_image() {
 	m3 | \
 	m4 | \
 	mlw221 | \
+	mlwg2 | \
 	mofi3500-3gn | \
 	mpr-a1 | \
 	mpr-a2 | \
@@ -65,6 +70,7 @@ platform_check_image() {
 	nw718 | \
 	omni-emb | \
 	omni-emb-hpm | \
+	omni-plug | \
 	psr-680w | \
 	px4885 | \
 	rp-n53 | \
@@ -81,6 +87,7 @@ platform_check_image() {
 	w502u |\
 	wr6202 |\
 	v22rw-2x2 | \
+	vocore | \
 	wl341v3 | \
 	wl-330n | \
 	wl-330n3g | \
